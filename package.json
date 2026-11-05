@@ -3,8 +3,16 @@
   "displayName": "%displayName%",
   "description": "%description%",
   "version": "0.1.0",
-  "publisher": "local",
+  "publisher": "maik-kluwe",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maik-kluwe/bonsai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/maik-kluwe/bonsai/issues"
+  },
+  "homepage": "https://github.com/maik-kluwe/bonsai#readme",
   "icon": "media/icon.png",
   "galleryBanner": {
     "color": "#1c212b",
@@ -71,7 +79,7 @@
     "compile": "tsc -p .",
     "watch": "tsc -watch -p .",
     "test": "npm run compile && node --test \"out/test/*.test.js\"",
-    "package": "vsce package --out build/ --allow-missing-repository --no-rewrite-relative-links"
+    "package": "vsce package --out build/"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
