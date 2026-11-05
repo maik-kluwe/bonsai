@@ -1,5 +1,5 @@
 {
-  "displayName": "Bonsai",
+  "displayName": "Bonsai Git",
   "description": "Git-Client in VS Code: Commit-Graph, Branches, Staging pro Hunk oder Zeile, Merge-Dialog für Konflikte und interaktiver Rebase.",
   "command.open": "Bonsai öffnen",
   "config.maxCommits": "Wie viele Commits auf einmal geladen werden. Beim Scrollen ans Listenende folgt der nächste Schwung.",
