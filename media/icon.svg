@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="trunk" gradientUnits="userSpaceOnUse" x1="0" y1="196" x2="0" y2="62">
+      <stop offset="0" stop-color="#2F6FE4"/>
+      <stop offset="1" stop-color="#22B8D8"/>
+    </linearGradient>
+    <linearGradient id="pot" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2F6FE4"/>
+      <stop offset="1" stop-color="#1F4FB8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Stamm und Äste (Commit-Graph) -->
+  <g fill="none" stroke="url(#trunk)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M128 196 C 112 176, 148 156, 132 132 C 120 112, 116 92, 124 62" stroke-width="16"/>
+    <path d="M131 150 C 108 142, 88 128, 66 118" stroke-width="12"/>
+    <path d="M128 112 C 150 112, 172 104, 192 96" stroke-width="12"/>
+  </g>
+
+  <!-- Commits -->
+  <circle cx="66"  cy="118" r="20" fill="#3DDC84"/>
+  <circle cx="192" cy="96"  r="20" fill="#22C1DC"/>
+  <circle cx="124" cy="58"  r="24" fill="#3DDC84"/>
+  <g fill="#FFFFFF" opacity="0.9">
+    <circle cx="66"  cy="118" r="8"/>
+    <circle cx="192" cy="96"  r="8"/>
+    <circle cx="124" cy="58"  r="10"/>
+  </g>
+
+  <!-- Schale -->
+  <path d="M52 196 H204 L192 226 Q190 232 184 232 H72 Q66 232 64 226 Z" fill="url(#pot)"/>
+  <rect x="44" y="190" width="168" height="12" rx="6" fill="#3A86F0"/>
+</svg>

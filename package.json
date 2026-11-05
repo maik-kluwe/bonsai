@@ -1,0 +1,82 @@
+{
+  "name": "bonsai",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "version": "0.1.0",
+  "publisher": "local",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1c212b",
+    "theme": "dark"
+  },
+  "keywords": [
+    "git",
+    "git graph",
+    "history",
+    "branch",
+    "merge",
+    "rebase",
+    "stash",
+    "staging"
+  ],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Visualization"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "bonsai.open",
+        "title": "%command.open%",
+        "category": "Bonsai",
+        "icon": "$(git-merge)"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "bonsai.open",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Bonsai",
+      "properties": {
+        "bonsai.maxCommits": {
+          "type": "number",
+          "default": 1000,
+          "description": "%config.maxCommits%"
+        },
+        "bonsai.gravatar": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%config.gravatar%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "test": "npm run compile && node --test \"out/test/*.test.js\"",
+    "package": "vsce package --out build/ --allow-missing-repository --no-rewrite-relative-links"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^4.1.0",
+    "typescript": "^7.0.2"
+  }
+}

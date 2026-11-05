@@ -1,0 +1,7 @@
+{
+  "displayName": "Bonsai",
+  "description": "A Git client inside VS Code: commit graph, branches, staging by hunk or line, a merge dialog for conflicts and interactive rebase.",
+  "command.open": "Open Bonsai",
+  "config.maxCommits": "How many commits are loaded at a time. Scrolling to the end of the list loads the next batch.",
+  "config.gravatar": "Show Gravatar pictures for commit authors. Off by default: it sends a hash of each author email address to gravatar.com. Without it, Bonsai shows initials. Takes effect when Bonsai is reopened."
+}

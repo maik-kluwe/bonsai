@@ -1,0 +1,7 @@
+{
+  "displayName": "Bonsai",
+  "description": "Git-Client in VS Code: Commit-Graph, Branches, Staging pro Hunk oder Zeile, Merge-Dialog für Konflikte und interaktiver Rebase.",
+  "command.open": "Bonsai öffnen",
+  "config.maxCommits": "Wie viele Commits auf einmal geladen werden. Beim Scrollen ans Listenende folgt der nächste Schwung.",
+  "config.gravatar": "Gravatar-Bilder für Commit-Autoren anzeigen. Standardmäßig aus: Es schickt einen Hash der E-Mail-Adresse jedes Autors an gravatar.com. Ohne diese Option zeigt Bonsai Initialen. Wirkt, sobald Bonsai neu geöffnet wird."
+}
