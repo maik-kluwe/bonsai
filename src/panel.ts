@@ -12,6 +12,7 @@ import { coalesced } from './coalesced';
 import { diffPayload, isToHost, sanitizeLook, type ToHost, type ToWebview } from './protocol';
 import { READ_ONLY_TYPES, handleRepoMessage, type MessageCtx } from './messages';
 import { changeView, commitDiffRefs, compareRefs, type DiffSide } from './diffTargets';
+import { apiErrorMessage } from './operations';
 import { MAIN_SCRIPTS, scriptTags } from './webviewAssets';
 import { findChange } from './flows';
 import { vscodeUi } from './ui';
@@ -142,7 +143,8 @@ export class BonsaiPanel implements vscode.Disposable {
   private api<T>(call: Promise<T>): Promise<T> {
     const rec = currentAction.getStore();
     if (rec) rec.api = true;
-    return call;
+    // The extension's errors only say "Failed to execute git"; the reason is in what Git printed
+    return call.catch(e => { throw new Error(apiErrorMessage(e)); });
   }
 
   /** Runs `fn` and adds what it did to the activity log. Errors are logged and thrown on. */
@@ -292,8 +294,10 @@ export class BonsaiPanel implements vscode.Disposable {
         // Every other type acts on the repository: messages.ts. The type checker leaves exactly those here.
         default: {
           const c: MessageCtx = {
-            ui: vscodeUi, svc: this.service()!, repo,
+            ui: { ...vscodeUi, conflicts: async (output, files) => this.post({ type: 'conflicts', files, output }) },
+            svc: this.service()!, repo,
             api: call => this.api(call), progress: (title, fn) => this.withProgress(title, fn), post: msg => this.post(msg),
+            memory: { get: key => this.ctx.globalState.get(key), set: (key, value) => Promise.resolve(this.ctx.globalState.update(key, value)) },
           };
           await handleRepoMessage(m, c);
           if (READ_ONLY_TYPES.includes(m.type)) return;
@@ -407,7 +411,7 @@ export class BonsaiPanel implements vscode.Disposable {
       <div id="graph-view" class="view">
         <div id="list" tabindex="0"><div id="spacer"></div><div id="rows"></div></div>
         <div class="hsplitter"></div>
-        <div id="details" class="empty">${t('selectCommit')}</div>
+        <div id="details" class="empty collapsed"></div>
       </div>
       <div id="changes-view" class="view" hidden>
         <div class="cleft">
@@ -448,6 +452,9 @@ export class BonsaiPanel implements vscode.Disposable {
   <div id="mergedlg" hidden></div>
   <div id="stashdlg" hidden></div>
   <div id="pushdlg" hidden></div>
+  <div id="pulldlg" hidden></div>
+  <div id="fetchdlg" hidden></div>
+  <div id="conflictdlg" hidden></div>
   <div id="menu" hidden></div>
   <div id="error" hidden></div>
   <script type="application/json" id="i18n">${JSON.stringify({ ...strings, _lang: lang }).replace(/</g, '\\u003c')}</script>

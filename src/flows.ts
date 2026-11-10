@@ -1,6 +1,7 @@
 import * as path from 'path';
 import { ForcePushMode, Status, type Change, type Repository } from './git';
 import type { GitService, Outcome } from './gitService';
+import { sanitizePullChoice, type PullInfo } from './protocol';
 import { MERGE_OPTIONS, RESET_MODES, createdRemoteBranch, isAuthFailure, remoteMessages, unsupportedWithConflicts, type MergeOption, type PushOptions, type ResetMode } from './operations';
 import { checkHunk, hunkPatch, linesPatch, parseDiff } from './diff';
 import { mergeInfo } from './snapshot';
@@ -23,7 +24,17 @@ export interface FlowCtx {
   api<T>(call: Promise<T>): Promise<T>;
   /** Runs `fn` while a progress notification is shown. */
   progress<T>(title: string, fn: () => Promise<T>): Promise<T>;
+  /** What the user chose last time, kept across sessions. */
+  memory: Memory;
 }
+
+export interface Memory {
+  get(key: string): unknown;
+  set(key: string, value: unknown): Promise<void>;
+}
+
+/** Where the last choice in the pull dialog is kept. */
+export const PULL_CHOICE_KEY = 'bonsai.pullChoice';
 
 /**
  * After an operation: refresh the status and, as Fork does, show what Git printed if it stopped on conflicts.
@@ -31,7 +42,9 @@ export interface FlowCtx {
  */
 export async function finish(ui: Ui, repo: Repository, outcome?: Outcome): Promise<void> {
   await repo.status();
-  if (outcome?.conflicted) await ui.inform(t('conflictGitOutput'), outcome.output);
+  if (outcome?.conflicted) {
+    await ui.conflicts(outcome.output, repo.state.mergeChanges.map(c => repoRelative(repo.rootUri.fsPath, c.uri.fsPath)));
+  }
 }
 
 /** Branch names stay as they are; full commit hashes are shortened for display. */
@@ -279,11 +292,9 @@ export async function runCommit(c: FlowCtx, message: string, amend: boolean): Pr
 
 // ---------- Toolbar ----------
 
-export async function runAction(c: FlowCtx, action: 'fetch' | 'pull' | 'stash' | 'snapshot'): Promise<void> {
+export async function runAction(c: FlowCtx, action: 'stash' | 'snapshot'): Promise<void> {
   const { repo, ui } = c;
   switch (action) {
-    case 'fetch': return c.progress('Fetch', () => c.api(repo.fetch({ all: true, prune: true })));
-    case 'pull': return c.progress('Pull', () => c.api(repo.pull()));
     case 'stash': {
       const message = await ui.input(t('promptStashMsg'));
       if (message === undefined) return;
@@ -299,6 +310,50 @@ export async function runAction(c: FlowCtx, action: 'fetch' | 'pull' | 'stash' |
       return repo.status();
     }
   }
+}
+
+/** Fetches from one remote, or from all; what is gone on the server is removed here, too. */
+export function runFetch(c: FlowCtx, remote?: string): Promise<void> {
+  return c.progress('Fetch', () => c.api(c.repo.fetch(remote ? { remote, prune: true } : { all: true, prune: true })));
+}
+
+/** The checked-out branch and the remote branch it tracks, or undefined after telling the user there is none. */
+async function pullTarget(c: FlowCtx): Promise<{ branch: string; upstream: string } | undefined> {
+  const branch = c.repo.state.HEAD?.name;
+  const head = branch ? (await c.svc.refs()).find(r => r.kind === 'head' && r.name === branch) : undefined;
+  if (!branch || !head?.upstream) { c.ui.error(t('errNoUpstream', branch ?? 'HEAD')); return undefined; }
+  return { branch, upstream: head.upstream };
+}
+
+/**
+ * The first half of a pull: fetches the upstream (and prunes, as Fork does) and looks at what the local changes would
+ * meet, so that the dialog can say what the boxes will do before Git has refused anything. It starts with what the
+ * user ticked the last time; the dialog never ticks a box on its own.
+ * Undefined when there is nothing to pull from.
+ */
+export async function runPullPrepare(c: FlowCtx): Promise<PullInfo | undefined> {
+  const target = await pullTarget(c);
+  if (!target) return undefined;
+  const { remote } = remoteBranch(c, target.upstream);
+  await c.progress('Fetch', () => c.api(c.repo.fetch({ remote, prune: true })));
+  // The prune may just have removed the branch the upstream setting points to
+  const head = (await c.svc.refs()).find(r => r.kind === 'head' && r.name === target.branch);
+  if (!head?.upstream || head.gone) { c.ui.error(t('errUpstreamGone', target.upstream)); return undefined; }
+  await c.repo.status();
+  const last = sanitizePullChoice(c.memory.get(PULL_CHOICE_KEY));
+  return {
+    upstream: target.upstream, into: target.branch, rebase: await c.svc.pullRebases(target.branch),
+    ...(last && { last }), ...(await c.svc.pullPreview(target.upstream)),
+  };
+}
+
+/** The second half: takes what the first one fetched into the branch. Conflicts are shown as after a merge or a rebase. */
+export async function runPull(c: FlowCtx, o: { rebase: boolean; stash: boolean }): Promise<void> {
+  const target = await pullTarget(c);
+  if (!target) return;
+  await c.memory.set(PULL_CHOICE_KEY, { rebase: o.rebase, stash: o.stash });
+  const outcome = await c.progress('Pull', () => c.svc.integrate(target.upstream, { rebase: o.rebase, autostash: o.stash }));
+  await finish(c.ui, c.repo, outcome);
 }
 
 /** Creates a branch from HEAD and switches to it; its name, or undefined if the user cancelled. */

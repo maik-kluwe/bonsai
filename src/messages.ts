@@ -3,7 +3,7 @@ import { parseDiff } from './diff';
 import { commitDiffRefs } from './diffTargets';
 import {
   applyHunk, applyLines, discardFiles, runAbort, runAction, runBranchAt, runCheckout, runCherryPick, runCommit, runMerge, runNewBranch, runPush,
-  runDeleteBranch, runDeleteRemoteBranch, runDeleteTag, runFastForward, runPullInto, runPushTag, runRenameBranch, runSavePatch, runTagAt, runTracking, runRebase, runRebaseContinue, runRebaseSkip, runReset, runRevert, runStashAction, runStashFiles, stageFiles, unstageFiles, type FlowCtx,
+  runDeleteBranch, runDeleteRemoteBranch, runDeleteTag, runFastForward, runFetch, runPull, runPullInto, runPullPrepare, runPushTag, runRenameBranch, runSavePatch, runTagAt, runTracking, runRebase, runRebaseContinue, runRebaseSkip, runReset, runRevert, runStashAction, runStashFiles, stageFiles, unstageFiles, type FlowCtx,
 } from './flows';
 
 /** What a message handler may use: the flow context and a way to answer the webview. */
@@ -43,6 +43,14 @@ async function announceBranch(c: MessageCtx, created: Promise<string | undefined
  */
 export const repoHandlers: { [K in RepoType]: Handler<K> } = {
   action: { run: (m, c) => (m.action === 'branch' ? announceBranch(c, runNewBranch(c)) : runAction(c, m.action)) },
+  fetch: { run: (m, c) => runFetch(c, m.remote) },
+  pullPrepare: {
+    run: async (_, c) => {
+      const info = await runPullPrepare(c);
+      if (info) c.post({ type: 'pullInfo', info });
+    },
+  },
+  pull: { run: (m, c) => runPull(c, m) },
   push: {
     run: async (m, c) => {
       const output = await runPush(c, m);

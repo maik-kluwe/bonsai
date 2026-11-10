@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { t } from './i18n';
 
 /** An entry of a pick list; the same shape VS Code's QuickPick takes. */
 export interface PickItem {
@@ -17,8 +18,8 @@ export interface Ui {
   confirm(message: string, action: string, detail?: string): Promise<boolean>;
   /** Modal question with several answers; the button pressed, or undefined if the dialog was dismissed. */
   choose(message: string, buttons: string[], detail?: string): Promise<string | undefined>;
-  /** Modal notice that only informs (what Git printed on conflicts). */
-  inform(message: string, detail: string): Promise<void>;
+  /** An operation stopped on conflicts: the files, and what Git printed. The banner in the panel takes over from there. */
+  conflicts(output: string, files: string[]): Promise<void>;
   error(message: string): void;
   /** Text input; undefined if cancelled. */
   input(prompt: string, value?: string): Promise<string | undefined>;
@@ -35,8 +36,9 @@ export const vscodeUi: Ui = {
   choose(message, buttons, detail) {
     return Promise.resolve(vscode.window.showWarningMessage(message, { modal: true, detail }, ...buttons));
   },
-  async inform(message, detail) {
-    await vscode.window.showWarningMessage(message, { modal: true, detail });
+  // The panel shows its own dialog (BonsaiPanel); this is for the windows that have none, such as the rebase plan
+  async conflicts(output) {
+    await vscode.window.showWarningMessage(t('conflictGitOutput'), { modal: true, detail: output });
   },
   error(message) {
     void vscode.window.showErrorMessage(message);

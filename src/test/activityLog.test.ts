@@ -19,6 +19,7 @@ describe('isWriteCommand', () => {
       [['log', '-1'], false], [['diff', '--cached'], false], [['rev-parse', 'HEAD'], false],
       [['merge-tree', 'a', 'b'], false], [['merge-base', 'a', 'b'], false], [['stash', 'list'], false],
       [['config', 'user.email'], false], [['ls-files'], false],
+      [['stash', 'create'], false], [['--literal-pathspecs', 'stash', 'create'], false], [['stash', 'push'], true],
     ];
     for (const [args, write] of cases) assert.equal(isWriteCommand(args), write, args.join(' '));
   });
@@ -32,6 +33,14 @@ describe('formatCommand', () => {
 });
 
 describe('describeAction', () => {
+  test('fetch and pull: the dialog\'s choices lead to entries, the first half of a pull is a fetch', () => {
+    assert.deepEqual(describeAction({ type: 'fetch' }), { title: 'Fetch', subtitle: undefined });
+    assert.deepEqual(describeAction({ type: 'fetch', remote: 'origin' }), { title: 'Fetch', subtitle: 'origin' });
+    assert.deepEqual(describeAction({ type: 'pullPrepare' }), { title: 'Fetch' });
+    assert.deepEqual(describeAction({ type: 'pull', rebase: false, stash: true }), { title: 'Pull' });
+    assert.deepEqual(describeAction({ type: 'pull', rebase: true, stash: false }), { title: 'Pull (rebase)' });
+  });
+
   test('titles follow Fork, the subtitle names what it is about', () => {
     assert.deepEqual(describeAction({ type: 'stage', paths: ['a.txt'] }), { title: 'Stage 1 File', subtitle: 'a.txt' }, 'one file');
     assert.deepEqual(describeAction({ type: 'unstage', paths: ['a', 'b', 'c'] }), { title: 'Unstage 3 Files', subtitle: undefined }, 'several files');

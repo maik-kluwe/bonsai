@@ -36,9 +36,12 @@ export class ScriptedUi implements Ui {
     this.detail = detail;
     return this.chooseAnswer(buttons);
   }
-  async inform(message: string, detail: string) {
-    this.asked.push(`inform: ${message}`);
-    this.informed.push({ message, detail });
+  /** The files the last conflict dialog named. */
+  conflictFiles: string[] = [];
+  async conflicts(output: string, files: string[]) {
+    this.asked.push('conflicts');
+    this.informed.push({ message: 'conflicts', detail: output });
+    this.conflictFiles = files;
   }
   error(message: string) { this.errors.push(message); }
   async saveFile(defaultPath: string) {
@@ -134,6 +137,8 @@ export class FlowHarness {
   readonly ui = new ScriptedUi();
   readonly svc = new GitService('git', this.repo as unknown as Repository);
   readonly posted: ToWebview[] = [];
+  /** What the flows remember between runs (VS Code keeps it in globalState). */
+  readonly memory = new Map<string, unknown>();
   /** How many calls went through the Git extension API wrapper. */
   apiCalls = 0;
 
@@ -143,6 +148,7 @@ export class FlowHarness {
       api: call => { this.apiCalls++; return call; },
       progress: (_title, fn) => fn(),
       post: m => { this.posted.push(m); },
+      memory: { get: key => this.memory.get(key), set: async (key, value) => { this.memory.set(key, value); } },
     };
   }
 

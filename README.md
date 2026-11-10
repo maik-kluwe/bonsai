@@ -16,7 +16,7 @@ With several repositories in the workspace, the dropdown at the top left switche
 
 ### Follow the history
 
-The graph shows every branch, remote branch, tag and stash in one view. Click a commit to see its changed files and diffs. Type in the filter box to find a commit by its message, author or hash: older commits load as you search, and Enter jumps to the next match.
+The graph shows every branch, remote branch, tag and stash in one view. Click a commit to see its changed files and diffs; the arrow at the right of the tabs folds that pane down to its tab row and back. Type in the filter box to find a commit by its message, author or hash: older commits load as you search, and Enter jumps to the next match.
 
 The sidebar lists branches, remotes, tags and stashes as folders, so `feature/login` sits inside `feature`. Right-click almost anything for what you can do with it.
 
@@ -44,6 +44,8 @@ Before you start a merge, cherry-pick or revert, Bonsai does a dry run and names
 ### Stay in sync
 
 Fetch, Pull and Push sit in the toolbar, and each branch shows how far it is ahead of or behind its upstream.
+
+Fetch asks from which remote, or from all of them, and removes the remote branches that are gone on the server. Pull fetches first and then shows what it is about to do. The boxes **Rebase instead of merge** and **Stash and reapply local changes** start as you left them the last time (the first time, the rebase box follows your Git settings and the stash box is off). Under them the dialog says whether Git would refuse the pull because of your local changes, and whether they will come back cleanly or conflict, before anything happens. If they conflict, a window lists the files, the stash stays and the conflict banner takes over.
 
 Push asks first: which branch, where to, whether to track it, push all tags or force (with lease). If the push creates the remote branch and the server has something to say, Bonsai shows it afterwards, so the link GitLab or GitHub prints for a new merge or pull request is one click away.
 

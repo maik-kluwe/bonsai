@@ -1,6 +1,6 @@
 import type { ActivityEntry } from './activityLog';
 import type { ParsedDiff } from './diff';
-import type { CommitDetails, ConflictSide, GitService } from './gitService';
+import type { CommitDetails, ConflictSide, GitService, PullPreview } from './gitService';
 import type { Snapshot } from './snapshot';
 
 /**
@@ -17,7 +17,13 @@ export type ToHost =
   | { type: 'loadMore' }
   /** The look of the diff toolbar, kept by the host so that it survives a reload. */
   | { type: 'saveLook'; look: LookState }
-  | { type: 'action'; action: 'fetch' | 'pull' | 'stash' | 'snapshot' | 'branch' }
+  | { type: 'action'; action: 'stash' | 'snapshot' | 'branch' }
+  /** From one remote, or from all of them without `remote`; branches that are gone on the server are removed. */
+  | { type: 'fetch'; remote?: string }
+  /** The Pull button: the host fetches the upstream, then answers with `pullInfo` for the dialog. */
+  | { type: 'pullPrepare' }
+  /** The dialog's answer: merge or rebase the fetched upstream into the current branch, with local changes stashed and reapplied or not. */
+  | { type: 'pull'; rebase: boolean; stash: boolean }
   | { type: 'push'; branch: string; remote: string; remoteBranch: string; track: boolean; tags: boolean; force: boolean }
   | { type: 'openUrl'; url: string }
   | { type: 'details'; hash: string; stash?: boolean }
@@ -116,9 +122,34 @@ export type ToWebview =
   | { type: 'recheck' }
   /** What the server said to a push (GitLab's link for a merge request). */
   | { type: 'pushResult'; output: string }
+  /** What the pull dialog shows, once the upstream is fetched. */
+  | { type: 'pullInfo'; info: PullInfo }
+  /** An operation stopped on conflicts: which files, and what Git printed. */
+  | { type: 'conflicts'; files: string[]; output: string }
   /** The sidebar marks the new branch once it is in the data. */
   | { type: 'branchCreated'; name: string }
   | { type: 'error'; message: string };
+
+/** What the pull dialog needs: the branches, what the local changes would meet, and whether the user's Git setting is to rebase. */
+export interface PullInfo extends PullPreview {
+  /** A remote branch such as origin/main. */
+  upstream: string;
+  /** The checked-out branch. */
+  into: string;
+  /** What the Git settings say; the dialog starts with this when the user has not chosen yet. */
+  rebase: boolean;
+  /** What the user ticked the last time they pulled. */
+  last?: PullChoice;
+}
+
+/** The two boxes of the pull dialog. */
+export interface PullChoice { rebase: boolean; stash: boolean }
+
+/** What a stored choice may hold: two booleans, or nothing. */
+export function sanitizePullChoice(v: unknown): PullChoice | undefined {
+  const o = (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>;
+  return typeof o.rebase === 'boolean' && typeof o.stash === 'boolean' ? { rebase: o.rebase, stash: o.stash } : undefined;
+}
 
 /** Look of the diff toolbar: show spaces, show line endings, wrap lines, ignore whitespace, lines of context (null = the whole file). */
 export interface LookState { ws: boolean; eol: boolean; wrap: boolean; iws: boolean; ctx: number | null }
@@ -132,13 +163,13 @@ export function sanitizeLook(v: unknown): LookState {
 
 /** Runtime lists of the message types; `satisfies` makes the compiler fail when a union member is missing here. */
 export const TO_HOST_TYPES = Object.keys({
-  ready: 0, selectRepo: 0, refresh: 0, loadMore: 0, saveLook: 0, action: 0, push: 0, openUrl: 0, details: 0, fileDiff: 0, openDiff: 0, checkout: 0, createBranchAt: 0, deleteBranch: 0, deleteRemoteBranch: 0, renameBranch: 0, setTracking: 0, createTagAt: 0, deleteTag: 0, pushTag: 0, fastForward: 0, pullInto: 0,
+  ready: 0, selectRepo: 0, refresh: 0, loadMore: 0, saveLook: 0, action: 0, fetch: 0, pullPrepare: 0, pull: 0, push: 0, openUrl: 0, details: 0, fileDiff: 0, openDiff: 0, checkout: 0, createBranchAt: 0, deleteBranch: 0, deleteRemoteBranch: 0, renameBranch: 0, setTracking: 0, createTagAt: 0, deleteTag: 0, pushTag: 0, fastForward: 0, pullInto: 0,
   copy: 0, stashAction: 0, stashFiles: 0, stage: 0, unstage: 0, discard: 0, openChange: 0, openFile: 0, loadDiff: 0, hunk: 0, lines: 0,
   resolveUsing: 0, mergeEditor: 0, mergeInputs: 0, mergeResolve: 0, mergeAbort: 0, merge: 0, cherryPick: 0, revert: 0, reset: 0, rebase: 0, interactiveRebase: 0, interactiveRebaseOnto: 0, compareLocal: 0, copyCommitInfo: 0, savePatch: 0, rebaseContinue: 0, rebaseSkip: 0, commit: 0, lastMessage: 0, recentMessages: 0, activity: 0,
 } satisfies Record<ToHost['type'], 0>);
 
 export const TO_WEBVIEW_TYPES = Object.keys({
-  data: 0, repos: 0, pushResult: 0, branchCreated: 0, details: 0, fileDiff: 0, diff: 0, mergeInputs: 0, lastMessage: 0, recentMessages: 0, committed: 0, activity: 0, look: 0, recheck: 0, error: 0,
+  data: 0, repos: 0, pushResult: 0, pullInfo: 0, conflicts: 0, branchCreated: 0, details: 0, fileDiff: 0, diff: 0, mergeInputs: 0, lastMessage: 0, recentMessages: 0, committed: 0, activity: 0, look: 0, recheck: 0, error: 0,
 } satisfies Record<ToWebview['type'], 0>);
 
 /** Cheap shape check for messages arriving from the webview: an object with a known `type`. Fields are not validated. */

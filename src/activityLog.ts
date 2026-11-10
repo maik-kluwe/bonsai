@@ -49,7 +49,7 @@ export function isWriteCommand(args: string[]): boolean {
     else break;
   }
   const cmd = args[i];
-  if (cmd === 'stash') return args[i + 1] !== 'list';
+  if (cmd === 'stash') return args[i + 1] !== 'list' && args[i + 1] !== 'create'; // `create` only builds a commit nobody refers to
   return WRITE_COMMANDS.has(cmd);
 }
 
@@ -68,7 +68,11 @@ const firstLine = (s: string) => s.split('\n').find(l => l.trim())?.trim() ?? ''
  */
 export function describeAction(m: ToHost): { title: string; subtitle?: string } | undefined {
   switch (m.type) {
-    case 'action': return { title: { fetch: 'Fetch', pull: 'Pull', stash: 'Stash', snapshot: 'Snapshot', branch: 'Create branch' }[m.action] };
+    case 'action': return { title: { stash: 'Stash', snapshot: 'Snapshot', branch: 'Create branch' }[m.action] };
+    case 'fetch': return { title: 'Fetch', subtitle: m.remote };
+    // The first half of a pull: it fetches, then waits for the dialog
+    case 'pullPrepare': return { title: 'Fetch' };
+    case 'pull': return { title: m.rebase ? 'Pull (rebase)' : 'Pull' };
     case 'push': return { title: m.force ? 'Force push' : 'Push', subtitle: `${m.branch} → ${m.remote}/${m.remoteBranch}` };
     case 'hunk': return { title: `${cap(m.action)} hunk`, subtitle: m.path };
     case 'lines': return { title: `${cap(m.action)} lines`, subtitle: m.path };

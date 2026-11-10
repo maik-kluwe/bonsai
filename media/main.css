@@ -109,7 +109,10 @@ main { flex: 1; display: flex; min-height: 0; }
 #details { height: var(--details-h); flex: none; overflow: hidden; display: flex; flex-direction: column; }
 .view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .view[hidden] { display: none; }
-#details.empty, #details.loading { align-items: center; justify-content: center; color: var(--muted); }
+/* Folded down to the tab row: by the user, or while there is no commit to show */
+#details.collapsed { height: auto; }
+#details.collapsed .dpane { display: none; }
+.hsplitter.off { display: none; }
 /* The old commit while the next one loads; the delay keeps a quick answer from flickering */
 #details.pending > * { opacity: 0.5; transition: opacity 0.1s 0.15s; }
 
@@ -359,8 +362,8 @@ svg .dot.clamped { fill: var(--vscode-editor-background); stroke: currentColor; 
 .dhead .tag { font-size: var(--fs-xs); text-transform: uppercase; padding: 0 5px; border-radius: 3px; border: 1px solid var(--border); color: var(--muted); }
 .dhead .grow, .hhead .grow { flex: 1; }
 /* Merge dialog */
-#mergedlg, #stashdlg, #pushdlg { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
-#mergedlg[hidden], #stashdlg[hidden], #pushdlg[hidden] { display: none; }
+#mergedlg, #stashdlg, #pushdlg, #pulldlg, #fetchdlg, #conflictdlg { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
+#mergedlg[hidden], #stashdlg[hidden], #pushdlg[hidden], #pulldlg[hidden], #fetchdlg[hidden], #conflictdlg[hidden] { display: none; }
 .mdlg, .sdlg {
   display: flex; flex-direction: column;
   background: var(--vscode-editor-background); border: 1px solid var(--border); border-radius: 6px;
@@ -387,6 +390,18 @@ svg .dot.clamped { fill: var(--vscode-editor-background); stroke: currentColor; 
 }
 .pchecks { display: flex; flex-direction: column; gap: 4px; padding: 2px 0 6px; }
 .pcheck { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.pnote { color: var(--muted); }
+/* Conflict dialog: the files first, what Git printed only when asked for */
+.cfiles { flex: none; max-height: 30vh; overflow: auto; margin: 0 12px 8px; padding: 4px 8px; list-style: none; border: 1px solid var(--border); background: var(--vscode-sideBar-background); font-family: var(--vscode-editor-font-family); }
+.cfiles li { padding: 1px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cfiles li.more { color: var(--muted); font-family: inherit; }
+.cout { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin: 0 12px 8px; }
+.cout summary { cursor: pointer; color: var(--muted); padding: 2px 0; }
+.cout .poutput { margin: 4px 0 0; max-height: 35vh; }
+.phint { flex: none; margin: 0 12px 8px; padding: 4px 8px; border-left: 3px solid var(--border); color: var(--muted); }
+.phint[hidden] { display: none; }
+.phint.warn { border-left-color: var(--vscode-editorWarning-foreground, #cca700); color: var(--vscode-foreground); }
+.pform select:disabled { opacity: 0.5; }
 .poutput {
   flex: 1 1 auto; min-height: 60px; overflow: auto; margin: 0 12px; padding: 6px 8px; white-space: pre-wrap; overflow-wrap: anywhere;
   font-family: var(--vscode-editor-font-family); font-size: var(--vscode-editor-font-size, 12px);
@@ -621,10 +636,16 @@ button.primary:disabled { opacity: 0.5; cursor: default; }
 /* ---------- Stash: expandable file diffs ---------- */
 #details .files.wide { width: 70%; }
 /* Commit / Changes tabs of the details pane */
-.dtabs { flex: none; display: flex; padding: 0 8px; border-bottom: 1px solid var(--border); background: var(--vscode-sideBar-background); }
+.dtabs { flex: none; display: flex; align-items: center; padding: 0 8px; border-bottom: 1px solid var(--border); background: var(--vscode-sideBar-background); }
 .dtabs button { font: inherit; font-size: var(--fs-sm); padding: 4px 14px; border: none; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); cursor: pointer; }
 .dtabs button:hover { color: var(--vscode-foreground); }
 .dtabs button.active { color: var(--vscode-foreground); border-bottom-color: var(--vscode-focusBorder); }
+.dtabs button:disabled { opacity: 0.4; cursor: default; }
+.dtabs button:disabled:hover { color: var(--muted); }
+.dtabs .grow { flex: 1; }
+.dtabs .dnote { color: var(--muted); font-size: var(--fs-sm); padding: 0 10px; }
+.dtabs .dtoggle { padding: 4px 6px; display: flex; align-items: center; }
+#details.off .dtoggle svg { transform: rotate(180deg); }
 .dpane { flex: 1; min-height: 0; display: flex; overflow: hidden; }
 #details .files.flist { width: 32%; min-width: 220px; flex: none; border-right: 1px solid var(--border); }
 #details .files.flist .file.active { background: var(--vscode-list-inactiveSelectionBackground); }

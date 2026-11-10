@@ -66,6 +66,8 @@ describe('ref menu', () => {
     assert.deepEqual(sync({ behind: 2, gone: true }), [], 'upstream deleted');
     assert.deepEqual(sync({ behind: 2, upstream: undefined }), [], 'no upstream');
     assert.deepEqual(sync({ name: 'main', behind: 2 }), ['pullEntry:origin/dev']);
+    const pull = msgs(ref({ name: 'main', behind: 2 })).find(x => x && x.type === 'pullPrepare');
+    assert.ok(pull, 'its entry opens the pull dialog, after fetching, like the toolbar button');
     assert.deepEqual(sync({ name: 'main', gone: true }), []);
   });
 

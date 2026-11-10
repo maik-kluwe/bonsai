@@ -68,6 +68,18 @@ const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 /** Result of an operation that may stop on conflicts; `output` is what Git printed (stdout, then stderr). */
 export type Outcome = { conflicted: false } | { conflicted: true; output: string };
 
+/** What a pull would meet, read after fetching; see GitService.pullPreview. */
+export interface PullPreview {
+  /** Commits of the upstream branch that HEAD lacks. */
+  behind: number;
+  /** Files with tracked local changes, staged or not. */
+  changes: number;
+  /** Those among them that the incoming commits change, too: Git refuses a merge because of them. */
+  overwritten: string[];
+  /** Files where the local changes would conflict once stashed and reapplied; absent when that could not be worked out. */
+  reapplyConflicts?: string[];
+}
+
 /** Everything Git printed before failing; `run` attaches both streams to its errors. */
 export const gitOutput = (e: unknown): string => {
   const { stdout, stderr } = e as { stdout?: string; stderr?: string };
@@ -286,14 +298,68 @@ export class GitService {
     return parsePreview(await this.run(previewArgs(kind, hash), undefined, [1]));
   }
 
+  /**
+   * What a pull of `upstream` (already fetched) would meet in the working tree. A merge is refused for files that
+   * the incoming commits change and that have local changes; a rebase for any local change. The files where the changes
+   * would conflict on the way back are worked out without touching anything: `stash create` builds the stash commit
+   * and leaves it unreferenced, `merge-tree` replays it onto the upstream. If the branches have diverged this reads
+   * the upstream tip, not the merge result, so it is a good guess rather than a promise.
+   */
+  async pullPreview(upstream: string): Promise<PullPreview> {
+    const names = async (args: string[]) => (await this.run(args)).split('\0').filter(Boolean);
+    const behind = await this.behind(upstream);
+    const local = await names(['diff', '--name-only', '--no-renames', '-z', 'HEAD', '--']);
+    if (!behind || !local.length) return { behind, changes: local.length, overwritten: [] };
+    const incoming = new Set(await names(['diff', '--name-only', '--no-renames', '-z', `HEAD...${upstream}`, '--']));
+    let reapplyConflicts: string[] | undefined;
+    try {
+      const stash = (await this.run(['stash', 'create'])).trim();
+      reapplyConflicts = stash
+        ? parsePreview(await this.run(['merge-tree', '--write-tree', '--name-only', '--no-messages', '--merge-base=HEAD', upstream, stash], undefined, [1]))
+        : [];
+    } catch { /* unmerged files, or a Git without merge-tree --write-tree: no prediction */ }
+    return { behind, changes: local.length, overwritten: local.filter(f => incoming.has(f)), reapplyConflicts };
+  }
+
+  private async behind(upstream: string): Promise<number> {
+    return Number((await this.run(['rev-list', '--count', `HEAD..${upstream}`])).trim());
+  }
+
+  /** Whether `git pull` on this branch would rebase: the branch's own setting wins over `pull.rebase`. Only plain `true` counts. */
+  async pullRebases(branch: string): Promise<boolean> {
+    const read = async (key: string) => (await this.run(['config', '--get', key], undefined, [1])).trim();
+    const value = (await read(`branch.${branch}.rebase`)) || (await read('pull.rebase'));
+    return value.toLowerCase() === 'true';
+  }
+
+  /**
+   * Takes the new commits of `upstream` (already fetched) into the current branch: what `git pull` does after its
+   * fetch. With `autostash` the local changes are put away first and brought back at the end; staged files are staged
+   * again then, as after a rebase. Conflicts are a result, see `attempt`.
+   */
+  async integrate(upstream: string, o: { rebase: boolean; autostash: boolean }): Promise<Outcome> {
+    if (!(await this.behind(upstream))) return { conflicted: false };
+    if (o.rebase) return this.rebase(upstream, o);
+    await this.clearPlan();
+    if (o.autostash) await this.rememberStaged();
+    return this.clearPlanWhenDone(await this.attemptOrClear(['merge', '--no-edit', ...(o.autostash ? ['--autostash'] : []), upstream]));
+  }
+
   private async hasUnmerged(): Promise<boolean> {
     return (await this.run(['diff', '--name-only', '--diff-filter=U'])).trim() !== '';
   }
 
-  /** Runs an operation. Conflicts are a result, not an error: the operation stays open (MERGE_HEAD, CHERRY_PICK_HEAD, REVERT_HEAD). */
+  /**
+   * Runs an operation. Conflicts are a result, not an error: the operation stays open (MERGE_HEAD, CHERRY_PICK_HEAD,
+   * REVERT_HEAD). With --autostash Git also exits 0 when the stash could not be brought back cleanly: it says so on
+   * stderr and leaves unmerged files and the stash behind. That is a conflict as well, only without a running operation.
+   */
   private async attempt(args: string[], env?: NodeJS.ProcessEnv): Promise<Outcome> {
     try {
-      await this.run(args, undefined, [], env);
+      const { stdout, stderr } = await this.git.runOutput(args, undefined, [], env);
+      if (args.includes('--autostash') && await this.hasUnmerged()) {
+        return { conflicted: true, output: [stdout, stderr].map(x => x.trim()).filter(Boolean).join('\n') };
+      }
       return { conflicted: false };
     } catch (e) {
       if (await this.hasUnmerged()) return { conflicted: true, output: gitOutput(e) };
@@ -344,9 +410,12 @@ export class GitService {
     await fs.rm(await this.planDir(), { recursive: true, force: true });
   }
 
-  /** Once the rebase is over (not stopped on conflicts): staged files come back as staged, the leftovers go. */
+  /**
+   * Once the operation is over: staged files come back as staged, the leftovers go. Not while it waits for conflicts to
+   * be resolved; but conflicts from a stash that came back after the end of the operation leave nothing to wait for.
+   */
   private async clearPlanWhenDone(o: Outcome): Promise<Outcome> {
-    if (!o.conflicted) {
+    if (!o.conflicted || !(await this.mergeState())) {
       await this.restoreStaged();
       await this.clearPlan();
     }

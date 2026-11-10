@@ -49,7 +49,7 @@
       const sync = kind === 'head' ? [
         // A diverged branch cannot fast-forward; the checked-out one has Pull
         ...(tracked && !current && behind && !ahead ? [send(t('fastForwardEntry', upstream), { type: 'fastForward', name })] : []),
-        ...(tracked && current ? [send(t('pullEntry', upstream), { type: 'action', action: 'pull' })] : []),
+        ...(tracked && current ? [send(t('pullEntry', upstream), { type: 'pullPrepare' })] : []),
         { label: t('pushEntry'), ui: { name: 'openPushDlg', arg: name } },
       ] : kind === 'tag' ? [send(t('pushEntry'), { type: 'pushTag', name })]
         : kind === 'remote' && currentBranch ? [send(t('pullIntoEntry', currentBranch), { type: 'pullInto', ref: name })] : [];

@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test';
 import { strict as assert } from 'assert';
 import {
-  MERGE_OPTIONS, cherryPickArgs, mergeArgs, parsePreview, previewArgs, rebaseArgs, revertArgs, unsupportedWithConflicts,
+  MERGE_OPTIONS, apiErrorMessage, cherryPickArgs, mergeArgs, parsePreview, previewArgs, rebaseArgs, revertArgs, unsupportedWithConflicts,
 } from '../operations';
 
 describe('mergeArgs', () => {
@@ -87,5 +87,28 @@ describe('replaySteps', () => {
       ['only starts like a replay word', '', 'picked a\nexec pick\nreset onto\nlabel p\n', { step: 0, total: 0 }],
     ];
     for (const [name, done, todo, want] of cases) assert.deepEqual(replaySteps(done, todo), want, name);
+  });
+});
+
+describe('apiErrorMessage', () => {
+  test('the Git extension only says "Failed to execute git"; the reason is what Git printed', () => {
+    const e = Object.assign(new Error('Failed to execute git'), {
+      stderr: 'error: Your local changes to the following files would be overwritten by merge:\n\ta.txt\nPlease commit your changes or stash them before you merge.\nAborting\n',
+      stdout: '',
+    });
+    assert.equal(apiErrorMessage(e), 'error: Your local changes to the following files would be overwritten by merge:\n\ta.txt\nPlease commit your changes or stash them before you merge.\nAborting');
+  });
+
+  test('stdout where stderr is empty (Git reports conflicts there), the message where Git printed nothing, any value at all', () => {
+    assert.equal(apiErrorMessage(Object.assign(new Error('Failed to execute git'), { stderr: ' \n', stdout: 'CONFLICT (content): Merge conflict in a.txt\n' })), 'CONFLICT (content): Merge conflict in a.txt');
+    assert.equal(apiErrorMessage(new Error('boom')), 'boom');
+    assert.equal(apiErrorMessage('plain'), 'plain');
+    assert.equal(apiErrorMessage(undefined), 'undefined');
+  });
+
+  test('progress lines in front of the reason are dropped when there are many', () => {
+    const progress = Array.from({ length: 30 }, (_, i) => `remote: Counting objects: ${i}%`);
+    const out = apiErrorMessage({ stderr: [...progress, 'fatal: unable to access', 'The requested URL returned error: 403'].join('\n') }, 3);
+    assert.equal(out, 'remote: Counting objects: 29%\nfatal: unable to access\nThe requested URL returned error: 403');
   });
 });

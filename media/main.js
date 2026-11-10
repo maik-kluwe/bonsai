@@ -12,6 +12,11 @@
   const { createStashDialog } = /** @type {any} */ (window).BonsaiStashDialog;
   // The push dialog and the server's answer, shared with the tests (media/pushdialog.js)
   const { createPushDialog } = /** @type {any} */ (window).BonsaiPushDialog;
+  // The pull and fetch dialogs, shared with the tests (media/pulldialog.js, media/fetchdialog.js)
+  const { createPullDialog } = /** @type {any} */ (window).BonsaiPullDialog;
+  const { createFetchDialog } = /** @type {any} */ (window).BonsaiFetchDialog;
+  // The window for an operation that stopped on conflicts, shared with the tests (media/conflictdialog.js)
+  const { createConflictDialog } = /** @type {any} */ (window).BonsaiConflictDialog;
   // The commit list's and sidebar's state: data packet, selection, filters, groups, loading more, shared with the tests (media/nav.js)
   const { createNav, WORKTREE } = /** @type {any} */ (window).BonsaiNav;
   // Icons as inline SVG, shared with the tests (media/icons.js)
@@ -52,10 +57,14 @@
   /** The diff toolbar's look; the host keeps it (message saveLook / look) so it survives a reload. */
   const diffLook = createLook(/** @type {(m: any) => void} */ (m => vscode.postMessage(m)));
   const pane = createDetails({ post: /** @type {(m: any) => void} */ (m => vscode.postMessage(m)), look: diffLook });
+  // The view keeps a few things across reloads (vscode.getState); each part writes its own keys and leaves the others alone
+  const keep = (/** @type {any} */ st) => vscode.setState({ ...(vscode.getState() ?? {}), ...st });
   const nav = createNav({
     post: /** @type {(m: any) => void} */ (m => vscode.postMessage(m)), pane,
-    saved: vscode.getState() ?? {}, save: /** @type {(st: any) => void} */ (st => vscode.setState(st)),
+    saved: vscode.getState() ?? {}, save: keep,
   });
+  /** The user folded the details pane down to its tabs (Fork's "Hide Commit Details"). */
+  let detailsHidden = vscode.getState()?.detailsHidden === true;
 
   const $ = (/** @type {string} */ s) => /** @type {HTMLElement} */ (document.querySelector(s));
   const list = $('#list'), rowsEl = $('#rows'), spacer = $('#spacer');
@@ -114,6 +123,8 @@
       case 'diff': { const update = local.receive(m, selection.target()); if (update && !update.unchanged) renderDiff(m, update.sameFile); break; }
       case 'recheck': local.load(selection.target()); break;
       case 'pushResult': showPushResult(m.output); break;
+      case 'pullInfo': openPullDlg(m.info); break;
+      case 'conflicts': openConflictDlg(m); break;
       case 'branchCreated': newBranch = m.name; showNewBranch(); break;
       case 'fileDiff': onFileDiff(m); break;
       case 'mergeInputs': onMergeInputs(m); break;
@@ -147,7 +158,10 @@
   document.querySelectorAll('[data-action]').forEach(b =>
     b.addEventListener('click', () => {
       const { action } = /** @type {HTMLElement} */ (b).dataset;
-      if (action === 'push') openPushDlg(); else vscode.postMessage({ type: 'action', action });
+      if (action === 'push') openPushDlg();
+      else if (action === 'fetch') openFetchDlg();
+      else if (action === 'pull') vscode.postMessage({ type: 'pullPrepare' });
+      else vscode.postMessage({ type: 'action', action });
     }));
   // Stash dropdown: apply recent stashes, save snapshot
   $('#stash-menu').addEventListener('click', () => {
@@ -331,8 +345,7 @@
     setView('graph');
     nav.showStash(hash);
     renderRows();
-    details.className = 'loading';
-    details.textContent = t('loading');
+    showDetailsNote('loading', t('loading'));
   }
 
   // ---------- Commit list (virtualized) ----------
@@ -397,10 +410,10 @@
   list.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { renderRows(); loadMoreIfNeeded(); }); });
   new ResizeObserver(() => renderRows()).observe(list);
 
-  function clearDetails() {
+  /** Nothing to show: no commit selected, or the pane is waiting for its first answer. */
+  function clearDetails(/** @type {string} */ hint = t('selectCommit')) {
     pane.clear();
-    details.className = 'empty';
-    details.textContent = t('selectCommit');
+    showDetailsNote('empty', hint);
   }
 
   function select(/** @type {number} */ i, /** @type {boolean} */ scroll) {
@@ -414,7 +427,7 @@
     }
     renderRows();
     // For a commit the old details stay, dimmed, until the answer arrives; the loading state would centre them in the meantime
-    if (kind === 'worktree') { clearDetails(); details.textContent = t('worktreeHint'); }
+    if (kind === 'worktree') clearDetails(t('worktreeHint'));
     else details.classList.add('pending');
   }
 
@@ -456,17 +469,51 @@
       + btn('allCtx', 'ctxAll', 'diffAllCtx', diffLook.value.ctx === null);
   }
 
+  /**
+   * The tab row of the details pane. Without a commit (`note` given) the tabs are off and say why. The button on the
+   * right folds the pane down to this row and back, as Fork does.
+   */
+  function detailsTabs(/** @type {string | undefined} */ note) {
+    const tab = (/** @type {string} */ id, /** @type {string} */ label) =>
+      `<button data-tab="${id}" class="${note === undefined && pane.tab === id ? 'active' : ''}"${note === undefined ? '' : ' disabled'}>${label}</button>`;
+    const tip = t(detailsHidden ? 'detailsShow' : 'detailsHide');
+    return `<div class="dtabs">${tab('commit', t('tabCommit'))}${tab('changes', t('tabChanges'))}<span class="dnote">${note === undefined ? '' : esc(note)}</span><span class="grow"></span>`
+      + `<button class="dtoggle" data-dtoggle title="${tip}" aria-label="${tip}">${ICONS.chevDown}</button></div>`;
+  }
+
+  /** The pane shows no commit: only the tab row, with a short note. `kind` is the state class, 'empty' or 'loading'. */
+  function showDetailsNote(/** @type {'empty' | 'loading'} */ kind, /** @type {string} */ note) {
+    details.className = kind;
+    details.innerHTML = detailsTabs(note);
+    applyDetailsLayout();
+  }
+
+  /** The pane is folded down to its tab row when the user said so or while there is no commit to show; the splitter goes with it. */
+  function applyDetailsLayout() {
+    const idle = details.classList.contains('empty') || details.classList.contains('loading');
+    details.classList.toggle('off', detailsHidden);
+    details.classList.toggle('collapsed', detailsHidden || idle);
+    $('.hsplitter').classList.toggle('off', detailsHidden || idle);
+    const toggle = details.querySelector('.dtoggle');
+    if (toggle) toggle.setAttribute('title', t(detailsHidden ? 'detailsShow' : 'detailsHide'));
+  }
+
+  function setDetailsHidden(/** @type {boolean} */ on) {
+    detailsHidden = on;
+    keep({ detailsHidden: on });
+    applyDetailsLayout();
+  }
+
   function renderDetails(/** @type {any} */ d) {
     if (!pane.show(d, nav.data.refs.some(r => r.kind === 'stash' && r.hash === d.hash))) return;
     details.className = '';
     renderDetailsPane();
+    applyDetailsLayout();
   }
 
   function renderDetailsPane() {
     const d = pane.current;
-    const tab = (/** @type {string} */ id, /** @type {string} */ label) =>
-      `<button data-tab="${id}" class="${pane.tab === id ? 'active' : ''}">${label}</button>`;
-    const tabs = `<div class="dtabs">${tab('commit', t('tabCommit'))}${tab('changes', t('tabChanges'))}</div>`;
+    const tabs = detailsTabs(undefined);
     const title = `<div class="ftitle">${d.files.length === 1 ? t('oneFile') : t('nFiles', d.files.length)}${d.parents.length > 1 && !d.isStash ? t('vsFirstParent') : ''}</div>`;
     if (pane.tab === 'changes') {
       details.innerHTML = `${tabs}<div class="dpane"><div class="files flist">${title}<ul></ul></div><div class="cdiff"><div class="ctool"></div><div class="cbody"></div></div></div>`;
@@ -555,9 +602,12 @@
       else { const i = nav.indexOf(link.dataset.hash ?? ''); if (i !== undefined) select(i, true); }
       return;
     }
-    const tabBtn = closest(el, '.dtabs button');
+    if (closest(el, '[data-dtoggle]')) { setDetailsHidden(!detailsHidden); return; }
+    const tabBtn = closest(el, '.dtabs button[data-tab]');
     if (tabBtn && pane.current) {
-      if (pane.setTab(tabBtn.dataset.tab)) renderDetailsPane();
+      // A tab asks for its content, so a folded pane opens
+      if (detailsHidden) setDetailsHidden(false);
+      if (pane.setTab(tabBtn.dataset.tab)) { renderDetailsPane(); applyDetailsLayout(); }
       return;
     }
     const lookBtn = closest(el, '.ctool button');
@@ -1072,6 +1122,93 @@
     else if (act === 'push' && pushDialog.push()) closePushDlg();
   });
 
+  // ---------- Pull and Fetch (as in Fork) ----------
+
+  const pullDlg = $('#pulldlg');
+  const pullDialog = createPullDialog({ t, esc, post: /** @type {(m: any) => void} */ (m => vscode.postMessage(m)) });
+
+  function showPullDlg() {
+    pullDlg.innerHTML = pullDialog.html();
+    pullDlg.hidden = false;
+  }
+  /** The host has fetched and looked at the local changes: the dialog opens with what it found. */
+  function openPullDlg(/** @type {any} */ info) {
+    pullDialog.open(info);
+    showPullDlg();
+    /** @type {HTMLElement} */ (pullDlg.querySelector('[data-pullact="pull"]')).focus();
+  }
+  function closePullDlg() {
+    pullDialog.close();
+    pullDlg.hidden = true;
+    pullDlg.innerHTML = '';
+  }
+  pullDlg.addEventListener('change', e => {
+    const el = /** @type {HTMLInputElement} */ (e.target);
+    if (!el.dataset.pullopt) return;
+    pullDialog.setOption(el.dataset.pullopt, el.checked);
+    showPullDlg(); // the boxes can move each other and the hint changes with them
+    /** @type {HTMLElement} */ (pullDlg.querySelector(`[data-pullopt="${el.dataset.pullopt}"]`)).focus();
+  });
+  pullDlg.addEventListener('click', e => {
+    const act = closest(/** @type {HTMLElement} */ (e.target), '[data-pullact]')?.dataset.pullact;
+    if (act === 'close') closePullDlg();
+    else if (act === 'pull' && pullDialog.pull()) closePullDlg();
+  });
+
+  const fetchDlg = $('#fetchdlg');
+  const fetchDialog = createFetchDialog({ t, esc, post: /** @type {(m: any) => void} */ (m => vscode.postMessage(m)) });
+
+  function showFetchDlg() {
+    fetchDlg.innerHTML = fetchDialog.html();
+    fetchDlg.hidden = false;
+  }
+  function openFetchDlg() {
+    fetchDialog.open(nav.data);
+    showFetchDlg();
+    /** @type {HTMLElement} */ (fetchDlg.querySelector('[data-fetchact="fetch"]')).focus();
+  }
+  function closeFetchDlg() {
+    fetchDialog.close();
+    fetchDlg.hidden = true;
+    fetchDlg.innerHTML = '';
+  }
+  fetchDlg.addEventListener('change', e => {
+    const el = /** @type {HTMLInputElement} */ (e.target);
+    if (el.id === 'fremote') { fetchDialog.setRemote(el.value); return; }
+    if (el.dataset.fetchopt === 'all') {
+      fetchDialog.setAll(el.checked);
+      showFetchDlg();
+      /** @type {HTMLElement} */ (fetchDlg.querySelector('[data-fetchopt="all"]')).focus();
+    }
+  });
+  fetchDlg.addEventListener('click', e => {
+    const act = closest(/** @type {HTMLElement} */ (e.target), '[data-fetchact]')?.dataset.fetchact;
+    if (act === 'close') closeFetchDlg();
+    else if (act === 'fetch' && fetchDialog.fetch()) closeFetchDlg();
+  });
+
+  // ---------- Conflicts ----------
+
+  const conflictDlg = $('#conflictdlg');
+  const conflictDialog = createConflictDialog({ t, esc });
+
+  function openConflictDlg(/** @type {{ files: string[], output: string }} */ conflicts) {
+    conflictDialog.open(conflicts);
+    conflictDlg.innerHTML = conflictDialog.html();
+    conflictDlg.hidden = false;
+    /** @type {HTMLElement} */ (conflictDlg.querySelector('[data-cact="resolve"]')).focus();
+  }
+  function closeConflictDlg() {
+    conflictDialog.close();
+    conflictDlg.hidden = true;
+    conflictDlg.innerHTML = '';
+  }
+  conflictDlg.addEventListener('click', e => {
+    const act = closest(/** @type {HTMLElement} */ (e.target), '[data-cact]')?.dataset.cact;
+    if (act === 'resolve') { closeConflictDlg(); setView('changes'); }
+    else if (act === 'close') closeConflictDlg();
+  });
+
   // ---------- Context menu ----------
 
   /** Webview-local menu actions (items of the form { label, ui: { name, arg } }). */
@@ -1110,6 +1247,9 @@
     if (!menu.hidden) menu.hidden = true;
     else if (stashDialog.isOpen) closeStashDlg();
     else if (!pushDlg.hidden) closePushDlg();
+    else if (pullDialog.isOpen) closePullDlg();
+    else if (fetchDialog.isOpen) closeFetchDlg();
+    else if (conflictDialog.isOpen) closeConflictDlg();
     else if (dialog.isOpen) closeMergeDlg();
   });
 
@@ -1178,5 +1318,6 @@
     document.documentElement.style.setProperty('--details-h', Math.max(80, Math.min(rect.bottom - e.clientY, rect.height - 80)) + 'px');
   });
 
+  clearDetails();
   vscode.postMessage({ type: 'ready' });
 })();

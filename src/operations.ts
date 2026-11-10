@@ -60,6 +60,19 @@ export const createdRemoteBranch = (output: string, remoteBranch: string): boole
 export const isAuthFailure = (message: string): boolean =>
   /could not read (Username|Password)|terminal prompts disabled|Authentication failed|Permission denied|Host key verification failed|Could not read from remote repository/i.test(message);
 
+/**
+ * Why a call into the Git extension failed. Its errors always read "Failed to execute git" and keep what Git printed in
+ * `stderr` (or `stdout`, where Git reports conflicts). The reason is at the end; progress lines in front of it are
+ * dropped when there are many.
+ */
+export function apiErrorMessage(e: unknown, maxLines = 10): string {
+  const { stderr, stdout, message } = (typeof e === 'object' && e !== null ? e : {}) as { stderr?: unknown; stdout?: unknown; message?: unknown };
+  const printed = [stderr, stdout].find((x): x is string => typeof x === 'string' && x.trim() !== '');
+  if (printed === undefined) return String(message ?? e);
+  const lines = printed.trim().split(/\r?\n/);
+  return lines.slice(-maxLines).join('\n');
+}
+
 export const RESET_MODES: readonly ResetMode[] = ['mixed', 'soft', 'hard'];
 
 /** `git reset --<mode> <hash>`. */
