@@ -15,7 +15,7 @@ The Makefile has three targets (it needs GNU Make; on Windows `winget install ez
 | Target | What it does |
 |---|---|
 | `make test` | Compiles and runs all tests (`npm test`); the integration tests create temporary Git repos |
-| `make build` | Runs the tests, then packages the extension into `build/bonsai-git-0.1.0.vsix` (`npm run package`). Install it with *Extensions: Install from VSIX…* |
+| `make build` | Runs the tests, then packages the extension into `build/bonsai-git-0.2.0.vsix` (`npm run package`). Install it with *Extensions: Install from VSIX…* |
 | `make screenshots` | Retakes the README images in `images/`, see below. Needs a `make build` first |
 
 Without Make: `npm run compile` compiles, `npm test` tests, `npm run package` packages.
