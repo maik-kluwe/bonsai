@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, test } from 'node:test';
 import { strict as assert } from 'assert';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
@@ -8,6 +8,13 @@ import { FlowHarness } from './flowHarness';
 import { handleRepoMessage } from '../messages';
 import { EMPTY_TREE, compareRefs } from '../diffTargets';
 import { createdRemoteBranch, isAuthFailure, pushArgs, remoteMessages } from '../operations';
+
+/** A hook in a bare repository. Git ignores a hook that is not executable (Linux, macOS); Git for Windows runs it anyway. */
+function installHook(bare: string, name: string, script: string): void {
+  const file = path.join(bare, 'hooks', name);
+  writeFileSync(file, script);
+  chmodSync(file, 0o755);
+}
 
 const push = { branch: 'main', remote: 'origin', remoteBranch: 'main', track: false, tags: false, force: false };
 
@@ -116,7 +123,7 @@ describe('deleting branches', () => {
   test('a refused push leaves the local branch in place', async () => {
     branch('feat/x');
     h.t.git('push', '-q', '-u', 'origin', 'feat/x');
-    writeFileSync(path.join(bare, 'hooks', 'pre-receive'), '#!/bin/sh\nexit 1\n');
+    installHook(bare, 'pre-receive', '#!/bin/sh\nexit 1\n');
     h.ui.chooseAnswer = b => b[1];
     await del('feat/x').catch(() => undefined);
     assert.equal(onServer('feat/x'), true);
@@ -416,14 +423,14 @@ describe('pushing', () => {
   });
 
   test('what the server says comes back, link included', async () => {
-    writeFileSync(path.join(bare, 'hooks', 'post-receive'), '#!/bin/sh\necho "To create a merge request, visit:"\necho "  https://gitlab.example.com/mr/new"\n');
+    installHook(bare, 'post-receive', '#!/bin/sh\necho "To create a merge request, visit:"\necho "  https://gitlab.example.com/mr/new"\n');
     await send();
     assert.equal(results().length, 1);
     assert.match(results()[0], /remote: +https:\/\/gitlab\.example\.com\/mr\/new/);
   });
 
   test('the second push to the branch stays quiet, whatever the server says', async () => {
-    writeFileSync(path.join(bare, 'hooks', 'post-receive'), '#!/bin/sh\necho "https://gitlab.example.com/mr/new"\n');
+    installHook(bare, 'post-receive', '#!/bin/sh\necho "https://gitlab.example.com/mr/new"\n');
     await send();
     assert.equal(results().length, 1);
     h.t.commitFile('f.txt', 'two\n');
