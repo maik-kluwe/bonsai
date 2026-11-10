@@ -79,7 +79,7 @@
     "compile": "tsc -p .",
     "watch": "tsc -watch -p .",
     "test": "npm run compile && node --test \"out/test/*.test.js\"",
-    "package": "vsce package --out build/"
+    "package": "node -e \"require('fs').mkdirSync('build', { recursive: true })\" && vsce package --out build/"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
