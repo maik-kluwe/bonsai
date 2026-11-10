@@ -41,6 +41,25 @@ PowerShell scripts need `-ExecutionPolicy Bypass` on a system that blocks script
 
 `media/icon.svg` is the source and the editor tab icon. `python scripts/make-icon.py` draws the same shapes into `media/icon.png` (needs Pillow), which the extension manifest requires as PNG. Change both when the shapes change.
 
+## Releasing
+
+A release is a tag. `.github/workflows/test.yml` runs the tests on Windows and Linux for every push to `main` and every pull request. `.github/workflows/release.yml` runs when a tag `v*` is pushed, and publishes the version in `package.json` to the Marketplace and attaches the same `.vsix` to a GitHub release. Before it publishes anything it checks that the tag is on `main`, that tag and `package.json` agree (`v0.2.0` against `0.2.0`) and that the tests pass; it publishes the file it has just built and does not build twice.
+
+To release:
+
+1. Raise the version: `npm version <x.y.z> --no-git-tag-version`, change the `.vsix` name in the README and in the table above, commit.
+2. Tag that commit and push both: `git tag v<x.y.z>`, `git push origin main v<x.y.z>`.
+3. Approve the run under *Actions* (the job waits for the environment `production`).
+
+Never give `vsce publish` a version argument in CI: `vsce publish minor` changes `package.json`, commits and tags on its own.
+
+One-time setup:
+
+- In the repository settings, create the environment `production` and add yourself as a required reviewer.
+- On https://marketplace.visualstudio.com/manage, open the publisher, choose *Trusted Publishing* and create a policy: repository owner `maik-kluwe`, repository `bonsai`, workflow `release.yml`, environment `production`. There is no token to store: the workflow trades a short-lived GitHub OIDC token for a Marketplace credential (`vsce publish --oidc`). Personal access tokens of Azure DevOps stop working on 1 December 2026, which is why the workflow does not use one. For a private repository the workflow has to run within 48 hours of creating the policy.
+
+Not tried yet: `--oidc` together with `--packagePath`, and Trusted Publishing for a publisher owned by a person rather than an organisation. If the first release fails at that step, the fallback is to publish straight from the checkout (`vsce publish --oidc`), which the version check in front of it keeps safe.
+
 ## Behaviour in detail
 
 - **Repo selection** follows the selection in Source Control; pick one manually via the dropdown.
