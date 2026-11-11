@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     # The environment holds the manual approval, and the Marketplace's Trusted Publishing policy names it
     environment: production
     permissions:
