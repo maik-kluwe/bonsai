@@ -1,6 +1,7 @@
 import * as path from 'path';
 import { Status, type Change, type Repository } from '../git';
 import { GitService } from '../gitService';
+import type { Trace } from '../gitRunner';
 import type { MessageCtx } from '../messages';
 import type { ToWebview } from '../protocol';
 import type { PickItem, Ui } from '../ui';
@@ -52,7 +53,10 @@ export class ScriptedUi implements Ui {
     this.asked.push(`input: ${prompt}`);
     return this.inputAnswer;
   }
-  async pick<T extends PickItem>(items: T[]) {
+  /** Title and placeholder of the last pick or pickMany: where the dry run names the files that would conflict. */
+  pickOptions: { title?: string; placeHolder?: string } = {};
+  async pick<T extends PickItem>(items: T[], options: { title?: string; placeHolder?: string } = {}) {
+    this.pickOptions = options;
     this.asked.push('pick');
     this.offered = items.map(i => i.label);
     return this.pickAnswer(items) as T | undefined;
@@ -135,7 +139,9 @@ export class FlowHarness {
   readonly t = new TestRepo();
   readonly repo = new FakeRepo(this.t);
   readonly ui = new ScriptedUi();
-  readonly svc = new GitService('git', this.repo as unknown as Repository);
+  /** Called after every Git command of the service, as the panel's activity log is. */
+  trace: Trace | undefined;
+  readonly svc = new GitService('git', this.repo as unknown as Repository, (args, stdout, stderr, ok) => this.trace?.(args, stdout, stderr, ok));
   readonly posted: ToWebview[] = [];
   /** What the flows remember between runs (VS Code keeps it in globalState). */
   readonly memory = new Map<string, unknown>();
