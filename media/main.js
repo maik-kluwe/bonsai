@@ -23,6 +23,8 @@
   const { ICONS } = /** @type {any} */ (window).BonsaiIcons;
   // HTML of a diff: hunks, marks, whitespace signs, shared with the tests (media/diffhtml.js)
   const { createDiffBody, esc } = /** @type {any} */ (window).BonsaiDiffHtml;
+  // Changed pictures: side by side, swipe, onion skin (media/imagediff.js)
+  const { createImageDiff } = /** @type {any} */ (window).BonsaiImageDiff;
   const { createMergeHtml } = /** @type {any} */ (window).BonsaiMergeHtml;
   // Selection in the changes list, shared with the tests (media/selection.js)
   const { createSelection } = /** @type {any} */ (window).BonsaiSelection;
@@ -51,7 +53,9 @@
   const t = (/** @type {string} */ k, /** @type {any[]} */ ...a) => String(L[k] ?? k).replace(/\{(\d+)\}/g, (_, i) => String(a[Number(i)] ?? ''));
 
   const menus = createMenus(t);
-  const diffBody = createDiffBody({ t, lineSel });
+  const imageDiff = createImageDiff({ t, locale: L._lang });
+  imageDiff.attach(document);
+  const diffBody = createDiffBody({ t, lineSel, images: imageDiff });
   const mergeHtml = createMergeHtml({ t, esc, icons: ICONS, fmtDate: (/** @type {any} */ d) => fmtDate(d) });
 
   /** The diff toolbar's look; the host keeps it (message saveLook / look) so it survives a reload. */

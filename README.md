@@ -54,6 +54,10 @@ Pushing uses your Git credentials, such as the Git Credential Manager or an SSH 
 
 **Activity** in the toolbar lists what Bonsai did in this session, with the Git commands it ran and what they printed. That helps when a step ends differently than you expected.
 
+### Compare pictures
+
+A changed PNG, JPG, GIF, WebP, BMP or ICO file is drawn instead of being listed as a binary file, in the details of a commit and in Local Changes. Choose **Side-by-Side**, **Swipe** (both pictures on top of each other, cut at a line you drag) or **Onion Skin** (the new picture fades over the old one with a slider). A picture that is new or removed is shown alone. Pictures over 8 MB show only their size.
+
 ## Settings
 
 | Setting | Default | What it does |

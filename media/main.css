@@ -519,6 +519,36 @@ svg .dot.clamped { fill: var(--vscode-editor-background); stroke: currentColor; 
 .dbody { flex: 1; overflow: auto; font-family: var(--vscode-editor-font-family); font-size: var(--vscode-editor-font-size, 12px); }
 .dmsg { padding: 24px; color: var(--muted); font-family: var(--vscode-font-family); text-align: center; line-height: 2; }
 .hunk { border-bottom: 1px solid var(--border); }
+/* Picture diff. The paddings, margins and gaps below (16, 8, 32) are repeated as PADDING, FRAME and GAP in media/imagediff.js, which
+   needs them to fit the pictures into the room: change both together. --pos is the swipe line (share of the stage), --op the opacity of the new picture in Onion Skin */
+.imgdiff { --pos: 50%; --op: 1; --checker: conic-gradient(#6b6b6b 25%, #8a8a8a 0 50%, #6b6b6b 0 75%, #8a8a8a 0) 0 0 / 16px 16px;
+  padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; font-family: var(--vscode-font-family); }
+.imgdiff .box { display: grid; grid-template-columns: auto; max-width: 100%; overflow: auto; }
+.imgdiff .caps { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 4px; font-weight: 600; }
+.imgdiff .cap.old { color: var(--vscode-gitDecoration-deletedResourceForeground, #c74e39); }
+.imgdiff .cap.new { color: var(--vscode-gitDecoration-addedResourceForeground, #81b88b); }
+.imgdiff .stage { position: relative; display: grid; background: var(--checker); }
+.imgdiff .pane { grid-area: 1 / 1; line-height: 0; }
+.imgdiff img { max-width: none; width: calc(var(--w) * var(--scale, 1)); height: auto; }   /* --w: natural width, set when loaded; --scale: the same for both pictures */
+.imgdiff .toolarge { padding: 24px; line-height: 1.4; color: var(--muted); background: var(--vscode-editor-background); }
+.imgdiff .metas { display: flex; justify-content: space-between; gap: 16px; padding-top: 4px; color: var(--muted); font-size: 0.9em; }
+.imgdiff .bar, .imgdiff input.onion { display: none; }
+.imgdiff .modes { display: flex; gap: 20px; }
+.imgdiff .modes button { background: none; border: 0; color: inherit; cursor: pointer; padding: 2px 4px; font: inherit; }
+.imgdiff .modes button.on { color: var(--vscode-textLink-foreground); }
+/* Side by side: caption, picture and size of each side in one column of a grid */
+.imgdiff[data-mode="side"] .box { grid-template-columns: auto auto; column-gap: 32px; justify-content: safe center; }
+.imgdiff[data-mode="side"] .caps, .imgdiff[data-mode="side"] .stage, .imgdiff[data-mode="side"] .metas { display: contents; }
+.imgdiff[data-mode="side"] .cap, .imgdiff[data-mode="side"] .meta { text-align: center; padding: 4px 0; }
+.imgdiff[data-mode="side"] .pane { grid-area: auto; background: var(--checker); outline: 8px solid #4a4a4a; align-self: start; justify-self: center; margin: 8px; }
+.imgdiff.single .box { grid-template-columns: auto; }
+/* One over the other: the old picture below, the new one cut off at the line or faded */
+.imgdiff[data-mode="swipe"] .metas, .imgdiff[data-mode="onion"] .metas { display: none; }
+.imgdiff[data-mode="swipe"] .pane.new { clip-path: inset(0 0 0 var(--pos)); }
+.imgdiff[data-mode="swipe"] .stage { cursor: ew-resize; touch-action: none; user-select: none; }
+.imgdiff[data-mode="swipe"] .bar { display: block; position: absolute; top: 0; bottom: 0; left: var(--pos); width: 2px; margin-left: -1px; background: var(--vscode-focusBorder, #3794ff); pointer-events: none; }
+.imgdiff[data-mode="onion"] .pane.new { opacity: var(--op); }
+.imgdiff[data-mode="onion"] input.onion { display: block; width: 200px; }
 .hhead {
   position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 4px; padding: 2px 8px;
   background: var(--vscode-editorGroupHeader-tabsBackground, var(--vscode-sideBar-background));

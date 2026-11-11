@@ -5,10 +5,10 @@
   const esc = (/** @type {string} */ s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
 
   /**
-   * @param {{ t: (key: string, ...args: any[]) => string, lineSel: { count(h: number): number, has(h: number, line: number): boolean } }} deps
-   *   t translates a text key; lineSel holds the marked lines (media/linesel.js)
+   * @param {{ t: (key: string, ...args: any[]) => string, lineSel: { count(h: number): number, has(h: number, line: number): boolean }, images?: { html(images: any): string } }} deps
+   *   t translates a text key; lineSel holds the marked lines (media/linesel.js); images draws a changed picture (media/imagediff.js)
    */
-  function createDiffBody({ t, lineSel }) {
+  function createDiffBody({ t, lineSel, images }) {
   /**
    * Hunks as a table; hunkBtns = buttons in the hunk header (empty for a read-only view). With `pickLines` the changed
    * lines can be marked, and a hunk with marked lines gets buttons for just those lines.
@@ -31,7 +31,7 @@
         : `<button data-lines="unstage">${t('unstageLines', n)}</button>`;
     };
     if (m.missing) return `<div class="dmsg">${t('diffMissing')}</div>`;
-    if (m.binary) return `<div class="dmsg">${t('diffBinary')}</div>`;
+    if (m.binary) return (m.images && images?.html(m.images)) || `<div class="dmsg">${t('diffBinary')}</div>`;
     if (!m.hunks.length) return `<div class="dmsg">${t('diffEmpty')}</div>`;
     return m.hunks.map((h, i) => `<div class="hunk" data-i="${i}">
       <div class="hhead"><span class="hh">${esc(h.header)}</span><span class="grow"></span>${lineBtns(i)}${hunkBtns}</div>

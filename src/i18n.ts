@@ -290,6 +290,15 @@ export const en = {
   confirmAbortCherryPick: 'Abort the cherry-pick? All conflict resolutions so far will be lost.',
   confirmAbortRevert: 'Abort the revert? All conflict resolutions so far will be lost.',
   diffBinary: 'Binary file – no text diff.',
+  imgOld: 'old',
+  imgNew: 'new',
+  imgCreated: 'created',
+  imgRemoved: 'removed',
+  imgSide: 'Side-by-Side',
+  imgSwipe: 'Swipe',
+  imgOnion: 'Onion Skin',
+  imgTooLarge: 'Too large to show ({0}).',
+  imgMeta: 'W: {0}px | H: {1}px ({2})',
   diffEmpty: 'No text changes (e.g. file mode only).',
 };
 
@@ -580,6 +589,15 @@ export const de: Strings = {
   confirmAbortCherryPick: 'Cherry-pick abbrechen? Bisherige Konfliktlösungen gehen verloren.',
   confirmAbortRevert: 'Revert abbrechen? Bisherige Konfliktlösungen gehen verloren.',
   diffBinary: 'Binärdatei – kein Text-Diff.',
+  imgOld: 'alt',
+  imgNew: 'neu',
+  imgCreated: 'neu angelegt',
+  imgRemoved: 'entfernt',
+  imgSide: 'Nebeneinander',
+  imgSwipe: 'Wischen',
+  imgOnion: 'Überblenden',
+  imgTooLarge: 'Zu groß für die Anzeige ({0}).',
+  imgMeta: 'B: {0}px | H: {1}px ({2})',
   diffEmpty: 'Keine Textänderungen (z. B. nur Dateimodus).',
 };
 

@@ -84,9 +84,12 @@ export class FakeRepo {
     this.refreshSync();
   }
 
-  private change(rel: string, status: Status): Change {
+  private change(rel: string, status: Status, renamedFrom?: string): Change {
     const uri = { fsPath: path.join(this.t.dir, rel) };
-    return { uri, originalUri: uri, renameUri: undefined, status } as unknown as Change;
+    // As in the Git extension: a rename has the old file as originalUri and the new one as renameUri
+    return renamedFrom
+      ? { uri, originalUri: { fsPath: path.join(this.t.dir, renamedFrom) }, renameUri: uri, status } as unknown as Change
+      : { uri, originalUri: uri, renameUri: undefined, status } as unknown as Change;
   }
 
   private refreshSync() {
@@ -98,7 +101,11 @@ export class FakeRepo {
       const xy = line.slice(0, 2), rel = line.slice(3);
       if (xy === '??') s.untrackedChanges.push(this.change(rel, Status.UNTRACKED));
       else if (UNMERGED.has(xy)) s.mergeChanges.push(this.change(rel, Status.BOTH_MODIFIED));
-      else {
+      else if (xy[0] === 'R') {
+        const [from, to] = rel.split(' -> ');
+        s.indexChanges.push(this.change(to, Status.INDEX_RENAMED, from));
+        if (xy[1] !== ' ') s.workingTreeChanges.push(this.change(to, Status.MODIFIED));
+      } else {
         if (xy[0] !== ' ') s.indexChanges.push(this.change(rel, xy[0] === 'A' ? Status.INDEX_ADDED : xy[0] === 'D' ? Status.INDEX_DELETED : Status.INDEX_MODIFIED));
         if (xy[1] !== ' ') s.workingTreeChanges.push(this.change(rel, xy[1] === 'D' ? Status.DELETED : Status.MODIFIED));
       }

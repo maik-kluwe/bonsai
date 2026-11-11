@@ -4,7 +4,7 @@
  */
 export const MAIN_SCRIPTS = [
   'lanes.js', 'mergeresolve.js', 'selection.js', 'commitbox.js', 'menus.js', 'linesel.js', 'avatar.js', 'activity.js',
-  'mergebar.js', 'look.js', 'details.js', 'localdiff.js', 'mergedialog.js', 'stashdialog.js', 'pushdialog.js', 'pulldialog.js', 'fetchdialog.js', 'conflictdialog.js', 'nav.js', 'icons.js', 'diffhtml.js', 'mergehtml.js', 'main.js',
+  'mergebar.js', 'look.js', 'details.js', 'localdiff.js', 'mergedialog.js', 'stashdialog.js', 'pushdialog.js', 'pulldialog.js', 'fetchdialog.js', 'conflictdialog.js', 'nav.js', 'icons.js', 'imagediff.js', 'diffhtml.js', 'mergehtml.js', 'main.js',
 ] as const;
 
 /** Scripts of the rebase dialog (rebasePanel.ts). */
