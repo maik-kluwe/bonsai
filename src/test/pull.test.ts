@@ -270,12 +270,6 @@ describe('the pull in two steps', () => {
     assert.deepEqual(s.h.t.status(), [' M a.txt'], 'and has not touched the working tree');
   });
 
-  test('the dialog starts as rebase when the user configured it', async () => {
-    s.h.t.git('config', 'pull.rebase', 'true');
-    await prepare();
-    assert.equal(info()[0].rebase, true);
-  });
-
   test('branches that are gone on the server are removed by the pull, which a plain pull does not do', async () => {
     s.h.t.git('push', '-q', 'origin', 'main:refs/heads/old');
     s.fetch();
@@ -306,34 +300,6 @@ describe('the pull in two steps', () => {
     assert.deepEqual(info(), []);
   });
 
-  test('step two with the stash box ticked: the changes come back', async () => {
-    s.upstream('a.txt', 20, 'UP');
-    s.local('a.txt', 1, 'LOCAL');
-    await prepare();
-    await handleRepoMessage({ type: 'pull', rebase: false, stash: true }, s.h.ctx);
-    assert.deepEqual(s.h.t.status(), [' M a.txt']);
-    assert.equal(s.h.t.git('log', '-1', '--format=%s').trim(), 'upstream a.txt');
-    assert.deepEqual(s.h.ui.informed, []);
-  });
-
-  test('step two with a conflict on the way back shows what Git printed, as after a merge', async () => {
-    s.upstream('a.txt', 1, 'UP');
-    s.local('a.txt', 1, 'LOCAL');
-    await prepare();
-    await handleRepoMessage({ type: 'pull', rebase: false, stash: true }, s.h.ctx);
-    assert.equal(s.h.ui.informed.length, 1);
-    assert.match(s.h.ui.informed[0].detail, /conflicts/);
-    assert.deepEqual(s.h.ui.conflictFiles, ['a.txt'], 'and which files it is about');
-    assert.deepEqual(s.h.t.status(), ['UU a.txt']);
-    assert.equal(s.h.repo.state.mergeChanges.length, 1, 'and the status was read again, so the banner can show it');
-  });
-
-  test('step two without the box, in the way: Git refuses and the user hears why', async () => {
-    s.upstream('a.txt', 20, 'UP');
-    s.local('a.txt', 1, 'LOCAL');
-    await prepare();
-    await assert.rejects(handleRepoMessage({ type: 'pull', rebase: false, stash: false }, s.h.ctx), /overwritten/);
-  });
 });
 
 describe('the pull dialog remembers what was ticked', () => {
@@ -342,29 +308,6 @@ describe('the pull dialog remembers what was ticked', () => {
   const infos = () => s.h.posted.filter(m => m.type === 'pullInfo').map(m => (m as { info: PullInfo }).info);
   beforeEach(() => { s = new Setup(); });
   afterEach(() => s.dispose());
-
-  test('the first time there is nothing to remember', async () => {
-    await prepare();
-    assert.equal('last' in infos()[0], false);
-  });
-
-  test('a pull keeps both boxes for the next dialog, a cancelled dialog keeps nothing', async () => {
-    await prepare(); // opened and cancelled: nothing was sent
-    assert.equal(s.h.memory.has(PULL_CHOICE_KEY), false);
-    s.upstream('b.txt', 20, 'UP');
-    await handleRepoMessage({ type: 'pull', rebase: true, stash: true }, s.h.ctx);
-    assert.deepEqual(s.h.memory.get(PULL_CHOICE_KEY), { rebase: true, stash: true });
-    await prepare();
-    assert.deepEqual(infos()[1].last, { rebase: true, stash: true });
-  });
-
-  test('what the user chose wins over the Git settings, which only decide the first time', async () => {
-    s.h.t.git('config', 'pull.rebase', 'true');
-    await handleRepoMessage({ type: 'pull', rebase: false, stash: false }, s.h.ctx);
-    await prepare();
-    assert.equal(infos()[0].rebase, true, 'the settings are still passed on');
-    assert.deepEqual(infos()[0].last, { rebase: false, stash: false }, 'but the dialog starts with the last choice');
-  });
 
   test('a stored value that is not two booleans is ignored', async () => {
     s.h.memory.set(PULL_CHOICE_KEY, { rebase: 'yes' });

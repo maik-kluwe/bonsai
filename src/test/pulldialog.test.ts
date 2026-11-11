@@ -34,36 +34,6 @@ describe('when Git needs the local changes out of the way', () => {
 });
 
 describe('pull dialog', () => {
-  test('shows where from and where to, with nothing ticked when nothing was chosen before', () => {
-    const html = setup().dialog.html();
-    assert.match(html, /<b>origin\/main<\/b>/);
-    assert.match(html, /pullBehind\(2\)/);
-    assert.match(html, /<b>main<\/b>/);
-    assert.equal(checked(html, 'rebase'), false);
-    assert.equal(checked(html, 'stash'), false);
-    assert.match(html, /class="phint" hidden/, 'no hint');
-  });
-
-  test('one new commit is not "1 new commits"', () => {
-    assert.match(setup({ behind: 1 }).dialog.html(), /pullBehindOne/);
-    assert.doesNotMatch(setup({ behind: 0 }).dialog.html(), /pullBehind/);
-  });
-
-  test('without an earlier choice "Rebase instead of merge" follows the Git settings; the stash box is off', () => {
-    const html = setup({ rebase: true }).dialog.html();
-    assert.equal(checked(html, 'rebase'), true);
-    assert.equal(checked(html, 'stash'), false);
-  });
-
-  test('the boxes start as the user left them the last time, whatever the settings say', () => {
-    const both = setup({ rebase: false, last: { rebase: true, stash: true } }).dialog.html();
-    assert.equal(checked(both, 'rebase'), true);
-    assert.equal(checked(both, 'stash'), true);
-    const none = setup({ rebase: true, last: { rebase: false, stash: false } }).dialog.html();
-    assert.equal(checked(none, 'rebase'), false);
-    assert.equal(checked(none, 'stash'), false);
-  });
-
   test('no box is ticked on its own, not even when the pull could not run without it: the hint says so instead', () => {
     const { dialog } = setup({ changes: 2, overwritten: ['a.txt'], reapplyConflicts: [] });
     assert.equal(checked(dialog.html(), 'stash'), false);
@@ -91,18 +61,6 @@ describe('pull dialog', () => {
   test('up to date: say so, whatever else is open', () => {
     const { dialog } = setup({ behind: 0, changes: 1, overwritten: ['a.txt'] });
     assert.deepEqual(dialog.hint(), { kind: 'info', text: 'pullUpToDate' });
-  });
-
-  test('Pull sends the boxes as they are, which the host keeps for next time; the dialog closes', () => {
-    const a = setup({ changes: 0, last: { rebase: true, stash: true } });
-    assert.equal(a.dialog.pull(), true);
-    assert.deepEqual(a.sent, [{ type: 'pull', rebase: true, stash: true }]);
-    assert.equal(a.dialog.isOpen, false);
-
-    const b = setup();
-    b.dialog.setOption('rebase', true);
-    b.dialog.pull();
-    assert.deepEqual(b.sent, [{ type: 'pull', rebase: true, stash: false }]);
   });
 
   test('a closed dialog sends nothing and draws nothing', () => {

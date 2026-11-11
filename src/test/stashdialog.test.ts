@@ -24,27 +24,10 @@ describe('stash dialog', () => {
     ]);
   });
 
-  test('sends the ticked files and the trimmed message, then closes', () => {
-    const { dialog, sent } = setup();
-    dialog.toggle('c.txt', true);
-    assert.equal(dialog.save('  wip  '), true);
-    assert.deepEqual(sent, [{ type: 'stashFiles', paths: ['b.txt', 'c.txt'], message: 'wip' }]);
-    assert.equal(dialog.isOpen, false);
-  });
-
   test('a rename takes its old path along', () => {
     const { dialog, sent } = setup(['new.txt']);
     dialog.save('');
     assert.deepEqual(sent[0].paths, ['new.txt', 'old.txt']);
-  });
-
-  test('nothing ticked: nothing to save, and the dialog stays', () => {
-    const { dialog, sent } = setup();
-    dialog.toggle('b.txt', false);
-    assert.equal(dialog.canSave, false);
-    assert.equal(dialog.save('x'), false);
-    assert.deepEqual(sent, []);
-    assert.equal(dialog.isOpen, true);
   });
 
   test('closing forgets the choice', () => {

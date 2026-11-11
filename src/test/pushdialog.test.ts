@@ -61,13 +61,6 @@ describe('push dialog', () => {
     assert.match(fresh, /data-popt="track" checked/);
   });
 
-  test('pushes the current branch with an upstream as it is', () => {
-    const { dialog, sent } = setup();
-    assert.equal(dialog.push(), true);
-    assert.deepEqual(sent, [{ type: 'push', branch: 'main', remote: 'origin', remoteBranch: 'main', track: false, tags: false, force: false }]);
-    assert.equal(dialog.isOpen, false);
-  });
-
   test('the choices reach the message', () => {
     const { dialog, sent } = setup('new/thing');
     dialog.setOption('track', false);

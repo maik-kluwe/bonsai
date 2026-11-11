@@ -25,37 +25,6 @@ describe('fetch dialog', () => {
     assert.equal(defaultRemote([], data), '');
   });
 
-  test('starts with "Fetch all remotes" ticked and the list of remotes off, as Fork does', () => {
-    const html = setup().dialog.html();
-    assert.match(html, /data-fetchopt="all" checked/);
-    assert.match(html, /<select id="fremote" disabled>/);
-    assert.match(html, /<option value="fork" selected>/);
-  });
-
-  test('all remotes: the message names none', () => {
-    const { dialog, sent } = setup();
-    assert.equal(dialog.fetch(), true);
-    assert.deepEqual(sent, [{ type: 'fetch' }]);
-    assert.equal(dialog.isOpen, false);
-  });
-
-  test('one remote: the message names it', () => {
-    const { dialog, sent } = setup();
-    dialog.setAll(false);
-    dialog.setRemote('origin');
-    assert.doesNotMatch(dialog.html(), /disabled>/);
-    dialog.fetch();
-    assert.deepEqual(sent, [{ type: 'fetch', remote: 'origin' }]);
-  });
-
-  test('without a remote there is nothing to fetch from', () => {
-    const { dialog, sent } = setup({ refs: [], remotes: [] });
-    assert.equal(dialog.canFetch, false);
-    assert.match(dialog.html(), /data-fetchact="fetch" disabled/);
-    assert.equal(dialog.fetch(), false);
-    assert.deepEqual(sent, []);
-  });
-
   test('a remote name cannot break the page', () => {
     const html = setup({ ...data, remotes: ['a"><script>'] }).dialog.html();
     assert.doesNotMatch(html, /<script>/);

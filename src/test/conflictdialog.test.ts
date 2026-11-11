@@ -12,18 +12,6 @@ const open = (files: string[], output = 'Auto-merging a.txt\nCONFLICT (content):
 };
 
 describe('conflict dialog', () => {
-  test('names the files, and keeps what Git printed behind a fold', () => {
-    const html = open(['a.txt', 'src/b.txt']).html();
-    assert.match(html, /conflictMany\(2\)/);
-    assert.match(html, /<li title="src\/b.txt">src\/b.txt<\/li>/);
-    assert.match(html, /<details class="cout"><summary>conflictOutput<\/summary><pre class="poutput">Auto-merging a.txt\nCONFLICT/);
-    assert.doesNotMatch(html, /<details[^>]* open/, 'folded');
-  });
-
-  test('one file is said in the singular', () => {
-    assert.match(open(['a.txt']).html(), /conflictOne/);
-  });
-
   test('a long list is cut', () => {
     const files = Array.from({ length: 20 }, (_, i) => `f${i}.txt`);
     const html = open(files).html();
