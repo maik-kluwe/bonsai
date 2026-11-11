@@ -68,7 +68,7 @@ One-time setup:
 - In the repository settings, create the environment `production` and add yourself as a required reviewer.
 - On https://marketplace.visualstudio.com/manage, open the publisher, choose *Trusted Publishing* and create a policy: repository owner `maik-kluwe`, repository `bonsai`, workflow `release.yml`, environment `production`. There is no token to store: the workflow trades a short-lived GitHub OIDC token for a Marketplace credential (`vsce publish --oidc`). Personal access tokens of Azure DevOps stop working on 1 December 2026, which is why the workflow does not use one. For a private repository the workflow has to run within 48 hours of creating the policy.
 
-Not tried yet: `--oidc` together with `--packagePath`, and Trusted Publishing for a publisher owned by a person rather than an organisation. If the first release fails at that step, the fallback is to publish straight from the checkout (`vsce publish --oidc`), which the version check in front of it keeps safe.
+This works: v0.2.2 went to the Marketplace with `--oidc` together with `--packagePath`, for a publisher owned by a person. Should it fail at that step one day, the fallback is to publish straight from the checkout (`vsce publish --oidc`), which the version check in front of it keeps safe.
 
 ## Behaviour in detail
 
