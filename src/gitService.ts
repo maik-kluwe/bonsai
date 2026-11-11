@@ -650,6 +650,39 @@ export class GitService {
     return { ours: await side(2, 'HEAD'), theirs: await side(3, theirsRef) };
   }
 
+  /** Raw content of a file at a revision (`rev` '' is the index); undefined if there is none or it is over the buffer of the runner. */
+  showBlob(rev: string, file: string): Promise<Buffer | undefined> {
+    return this.git.runBinary(['show', `${rev}:${file}`]);
+  }
+
+  /** Size in bytes of a file at a revision (`rev` '' is the index), without reading it; undefined if there is none. */
+  async blobSize(rev: string, file: string): Promise<number | undefined> {
+    const out = (await this.git.runBinary(['cat-file', '-s', `${rev}:${file}`]))?.toString().trim();
+    return out && /^\d+$/.test(out) ? Number(out) : undefined;
+  }
+
+  /** A file of the working tree as an absolute path; undefined when it is gone or lies outside the repository, also through a symlink. */
+  private async workingPath(rel: string): Promise<string | undefined> {
+    const abs = path.resolve(this.root, rel);
+    if (!isInside(this.root, abs)) return undefined;
+    try {
+      const [real, root] = await Promise.all([fs.realpath(abs), fs.realpath(this.root)]);
+      return isInside(root, real) ? real : undefined;
+    } catch { return undefined; }
+  }
+
+  /** Raw content of a file in the working tree; undefined if it is gone or not inside the repository. */
+  async workingFile(rel: string): Promise<Buffer | undefined> {
+    const abs = await this.workingPath(rel);
+    return abs ? fs.readFile(abs).catch(() => undefined) : undefined;
+  }
+
+  /** Size in bytes of a file in the working tree, without reading it; undefined if it is gone or not inside the repository. */
+  async workingFileSize(rel: string): Promise<number | undefined> {
+    const abs = await this.workingPath(rel);
+    return abs ? (await fs.stat(abs).catch(() => undefined))?.size : undefined;
+  }
+
   /** Raw content of an index stage (1 = base, 2 = ours, 3 = theirs); undefined if the stage does not exist. */
   private blob(stage: number, rel: string): Promise<Buffer | undefined> {
     return this.git.runBinary(['show', `:${stage}:${rel}`]);

@@ -1,6 +1,7 @@
 import type { ActivityEntry } from './activityLog';
 import type { ParsedDiff } from './diff';
 import type { CommitDetails, ConflictSide, GitService, PullPreview } from './gitService';
+import type { ImagePair } from './images';
 import type { Snapshot } from './snapshot';
 
 /**
@@ -92,11 +93,14 @@ export type ToHost =
 export interface DiffPayload {
   binary: boolean;
   hunks: { header: string; lines: ParsedDiff['hunks'][number]['lines'] }[];
+  /** The two sides of a changed picture (png, jpg …); absent for other files */
+  images?: ImagePair;
 }
 
-export const diffPayload = (d: ParsedDiff): DiffPayload => ({
+export const diffPayload = (d: ParsedDiff, images?: ImagePair): DiffPayload => ({
   binary: d.binary,
   hunks: d.hunks.map(h => ({ header: h.header, lines: h.lines })),
+  ...(images && { images }),
 });
 
 /** Host -> webview. */

@@ -7,6 +7,7 @@ import { isConflict, statusLetter, type ChangeItem } from './changes';
 import { repoRelative } from './paths';
 import { buildSnapshot, mergeInfo, type Snapshot } from './snapshot';
 import { t } from './i18n';
+import { readImages, type ImageSource } from './images';
 
 /** The changes of VS Code's Git state as the view lists them: paths relative to the repository, sorted. */
 export function changeItems(root: string, changes: readonly Change[]): ChangeItem[] {
@@ -43,5 +44,10 @@ export async function readLocalDiff(svc: GitService, repo: Repository, rel: stri
   if (isConflict(c.status)) return { type: 'diff', path: rel, staged, conflict: true, sides: await svc.conflictSides(rel, mergeHash) };
   const untracked = c.status === Status.UNTRACKED;
   const d = parseDiff(await svc.diffLocal(rel, staged, untracked, context));
-  return { type: 'diff', path: rel, staged, untracked, context, ...diffPayload(d) };
+  const before = c.renameUri ? repoRelative(repo.rootUri.fsPath, c.originalUri.fsPath) : rel;
+  // Staged: HEAD against the index. Unstaged: the index against the file. Untracked: only the file.
+  const left: ImageSource = untracked ? undefined : staged ? { kind: 'rev', rev: 'HEAD', file: before } : { kind: 'index', file: before };
+  const right: ImageSource = staged ? { kind: 'index', file: rel } : { kind: 'workingTree', file: rel };
+  const images = d.binary ? await readImages(svc, left, right) : undefined;
+  return { type: 'diff', path: rel, staged, untracked, context, ...diffPayload(d, images) };
 }

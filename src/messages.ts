@@ -1,6 +1,7 @@
 import { diffPayload, type ToHost, type ToWebview } from './protocol';
 import { parseDiff } from './diff';
 import { commitDiffRefs } from './diffTargets';
+import { readImages, refSource } from './images';
 import {
   applyHunk, applyLines, discardFiles, runAbort, runAction, runBranchAt, runCheckout, runCherryPick, runCommit, runMerge, runNewBranch, runPush,
   runDeleteBranch, runDeleteRemoteBranch, runDeleteTag, runFastForward, runFetch, runPull, runPullInto, runPullPrepare, runPushTag, runRenameBranch, runSavePatch, runTagAt, runTracking, runRebase, runRebaseContinue, runRebaseSkip, runReset, runRevert, runStashAction, runStashFiles, stageFiles, unstageFiles, type FlowCtx,
@@ -98,7 +99,9 @@ export const repoHandlers: { [K in RepoType]: Handler<K> } = {
     run: async (m, c) => {
       const { left, right } = commitDiffRefs(m);
       const raw = await c.svc.diffRefs(left, right, m.path, m.oldPath, m.context, m.ignoreSpace);
-      c.post({ type: 'fileDiff', hash: m.hash, path: m.path, context: m.context, ignoreSpace: m.ignoreSpace, ...diffPayload(parseDiff(raw)) });
+      const d = parseDiff(raw);
+      const images = d.binary ? await readImages(c.svc, refSource(left, m.oldPath ?? m.path), refSource(right, m.path)) : undefined;
+      c.post({ type: 'fileDiff', hash: m.hash, path: m.path, context: m.context, ignoreSpace: m.ignoreSpace, ...diffPayload(d, images) });
     },
   },
   mergeInputs: { readOnly: true, run: async (m, c) => c.post({ type: 'mergeInputs', path: m.path, result: await c.svc.mergeInputs(m.path) }) },

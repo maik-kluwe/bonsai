@@ -21,7 +21,7 @@ export function pageHtml(o: PageOptions): string {
 <html lang="${lang}">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${o.cspSource}; script-src 'nonce-${o.nonce}';${o.gravatar ? ' img-src https://gravatar.com https://*.gravatar.com;' : ''}">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${o.cspSource}; script-src 'nonce-${o.nonce}';${o.gravatar ? ' img-src data: https://gravatar.com https://*.gravatar.com;' : ' img-src data:;'}">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="${o.css}">
 </head>
