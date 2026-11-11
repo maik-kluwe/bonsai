@@ -15,7 +15,7 @@ The Makefile has three targets (it needs GNU Make; on Windows `winget install ez
 | Target | What it does |
 |---|---|
 | `make test` | Compiles and runs all tests (`npm test`); the integration tests create temporary Git repos |
-| `make build` | Runs the tests, then packages the extension into `build/bonsai-git-0.2.2.vsix` (`npm run package`). Install it with *Extensions: Install from VSIX…* |
+| `make build` | Runs the tests, then packages the extension into `build/bonsai-git-<version>.vsix` (`npm run package`). Install it with *Extensions: Install from VSIX…* |
 | `make screenshots` | Retakes the README images in `images/`, see below. Needs a `make build` first |
 
 Without Make: `npm run compile` compiles, `npm test` tests, `npm run package` packages.
@@ -57,9 +57,10 @@ A release is a tag. `.github/workflows/test.yml` runs the tests on Windows and L
 
 To release:
 
-1. Raise the version: `npm version <x.y.z> --no-git-tag-version`, change the `.vsix` name in the table above, commit.
-2. Tag that commit and push both: `git tag v<x.y.z>`, `git push origin main v<x.y.z>`.
-3. Approve the run under *Actions* (the job waits for the environment `production`).
+1. Write the section for the new version at the top of `CHANGELOG.md`, from the point of view of a user: what they can do now, not which tests were added. `vsce` packs the file and the Marketplace shows it as the *Changelog* tab.
+2. Raise the version: `npm version <x.y.z> --no-git-tag-version`, commit (with the changelog).
+3. Tag that commit and push both: `git tag v<x.y.z>`, `git push origin main v<x.y.z>`.
+4. Approve the run under *Actions* (the job waits for the environment `production`).
 
 Never give `vsce publish` a version argument in CI: `vsce publish minor` changes `package.json`, commits and tags on its own.
 
