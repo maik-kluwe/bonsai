@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import { avatarHashes, gravatarHash } from '../avatars';
+import { pageHtml } from '../pageHtml';
 
 const { initials, hue, HUES }: { initials(n: string): string; hue(k: string): number; HUES: number } = require('../../media/avatar.js');
 
@@ -56,7 +57,10 @@ describe('wiring', () => {
     const pkg = JSON.parse(read('package.json'));
     assert.equal(pkg.contributes.configuration.properties['bonsai.gravatar'].default, false);
     const panel = read('src/panel.ts');
-    assert.match(panel, /this\.gravatar \? ' img-src https:\/\/gravatar\.com https:\/\/\*\.gravatar\.com;' : ''/);
+    const csp = (gravatar: boolean) => /Content-Security-Policy" content="([^"]*)"/.exec(pageHtml({ nonce: 'n', cspSource: 'c', css: 'main.css', uri: f => f, gravatar }))?.[1] ?? '';
+    assert.doesNotMatch(csp(false), /img-src/, 'off: no image may load from outside');
+    assert.match(csp(true), /img-src https:\/\/gravatar\.com https:\/\/\*\.gravatar\.com;/);
+    assert.match(panel, /pageHtml\(\{[^}]*gravatar: this\.gravatar/s, 'the panel passes the setting on');
     assert.match(panel, /this\.gravatar \? \{ \.\.\.snapshot, avatars: avatarHashes/);
     for (const f of ['package.nls.json', 'package.nls.de.json']) assert.ok(JSON.parse(read(f))['config.gravatar'], f);
   });

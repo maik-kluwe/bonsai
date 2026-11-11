@@ -95,7 +95,7 @@ describe('icons', () => {
   const read = (rel: string) => readFileSync(path.join(root, rel), 'utf8');
 
   test('every icon the code names exists', () => {
-    const files = readdirSync(path.join(root, 'media')).filter(f => f.endsWith('.js')).map(f => `media/${f}`).concat(['src/panel.ts']);
+    const files = readdirSync(path.join(root, 'media')).filter(f => f.endsWith('.js')).map(f => `media/${f}`).concat(['src/pageHtml.ts']);
     const used = new Set<string>();
     for (const f of files) {
       const src = read(f);
