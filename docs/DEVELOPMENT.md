@@ -47,7 +47,7 @@ A release is a tag. `.github/workflows/test.yml` runs the tests on Windows and L
 
 To release:
 
-1. Raise the version: `npm version <x.y.z> --no-git-tag-version`, change the `.vsix` name in the README and in the table above, commit.
+1. Raise the version: `npm version <x.y.z> --no-git-tag-version`, change the `.vsix` name in the table above, commit.
 2. Tag that commit and push both: `git tag v<x.y.z>`, `git push origin main v<x.y.z>`.
 3. Approve the run under *Actions* (the job waits for the environment `production`).
 

@@ -6,9 +6,8 @@ A full Git client in a VS Code tab. See your whole history as a graph, stage sin
 
 ## Getting started
 
-1. Install Bonsai. It isn't on the Marketplace yet, so install the `.vsix` file: run **Extensions: Install from VSIX…** from the Command Palette and pick `build/bonsai-git-0.2.2.vsix`.
-2. Open a folder that contains a Git repository.
-3. Click **Bonsai** in the status bar at the bottom left. The button at the top of the Source Control view and the command **Bonsai: Open Bonsai** do the same.
+1. Open a folder that contains a Git repository.
+2. Click **Bonsai** in the status bar at the bottom left. The button at the top of the Source Control view and the command **Bonsai: Open Bonsai** do the same.
 
 With several repositories in the workspace, the dropdown at the top left switches between them.
 
