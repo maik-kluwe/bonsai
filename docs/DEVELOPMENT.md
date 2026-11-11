@@ -33,6 +33,16 @@ To try the extension without installing it, open the folder in VS Code and press
 
 PowerShell scripts need `-ExecutionPolicy Bypass` on a system that blocks scripts, e.g. `powershell -ExecutionPolicy Bypass -File scripts/reload-vscode.ps1`.
 
+### Tests
+
+`npm test` runs three kinds of tests, all in `src/test/`:
+
+- **Unit tests** for logic without Git: parsers, the dialogs' state (`media/*.js` run in Node), menus.
+- **Integration tests** with real temporary Git repositories (`TestRepo`, `FlowHarness`): one flow at a time, from the message of the view to the result in Git.
+- **Scenario tests** (`scenario.*.test.ts`, one file per section of the README): the real view runs in jsdom, you click what a user clicks, the real handlers work on a real repository (with a server and a colleague who pushes where needed), and the test reads the DOM and Git. `scenario.ts` is the loop between view and host, `dom.ts` the page. They see what the view says and does, not how it looks, and they leave out `panel.ts` itself (VS Code's dialogs, the Git extension, the caches).
+
+To check that a test notices a bug, break the code on purpose: `node scripts/mutate.mjs <file> <search> <replace> out/test/<name>.test.js` replaces the text, runs the given compiled tests, reports `KILLED` or `SURVIVED` and restores the file with `git checkout` (the file must be clean in Git).
+
 ### README images
 
 `scripts/screenshots/new-repo.ps1` builds a demo repo, `scripts/screenshots/take.ps1` starts a separate VS Code with a clean profile (it never touches your own window), drives it with mouse and keyboard and photographs it. Don't use the mouse or keyboard while it runs, that takes about a minute.
