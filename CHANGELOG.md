@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 - 2026-11-14
+
+### Added
+- Arrow keys move through the Unstaged and Staged lists and show each file's diff. Shift extends the selection.
+
+### Changed
+- File rows in the Commit and Changes tabs are as tall as in the Unstaged and Staged lists.
+
 ## 0.3.0 - 2026-11-11
 
 ### Added
