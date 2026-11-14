@@ -606,8 +606,9 @@ svg .dot.clamped { fill: var(--vscode-editor-background); stroke: currentColor; 
 .chead button:disabled { opacity: 0.4; cursor: default; }
 .clist ul { flex: 1 1 auto; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 2px 0; }
 .clist .none { padding: 8px 12px; color: var(--muted); }
-.clist .file { padding: 5px 12px; }
-.clist .st { width: 18px; font-size: var(--fs-sm); }
+/* The file rows of the Commit and Changes tabs look like those of the lists (same height, same status column). */
+.clist .file, #details .file { padding: 5px 12px; }
+.clist .st, #details .file .st { width: 18px; font-size: var(--fs-sm); }
 .file .acts { margin-left: auto; display: none; gap: 2px; }
 .file .acts button { padding: 0 6px; font-size: 13px; line-height: 16px; }
 .file:hover .acts { display: inline-flex; }

@@ -58,6 +58,20 @@
         return { path, staged: which === 'staged' };
       },
 
+      /**
+       * Arrow key: select the file `delta` rows from the diff file, like a click on it (Shift extends the range).
+       * @param {'staged' | 'unstaged'} which
+       * @param {{unstaged: {path: string}[], staged: {path: string}[]}} files
+       * @param {number} delta
+       * @param {{shift?: boolean}} mods
+       */
+      move(which, files, delta, mods = {}) {
+        const list = files[which];
+        if (!list.length) return null;
+        const at = target && target.staged === (which === 'staged') ? list.findIndex(f => f.path === target.path) : -1;
+        return this.click(which, files, at === -1 ? 0 : Math.min(list.length - 1, Math.max(0, at + delta)), { shift: mods.shift });
+      },
+
       /** Ctrl+A: select all files of the list. */
       selectAll(which, files) {
         marked[otherOf(which)].clear();

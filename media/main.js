@@ -983,9 +983,19 @@
 
   changesView.addEventListener('keydown', e => {
     const box = closest(/** @type {HTMLElement} */ (e.target), '.clist');
-    if (!box || !(e.key === 'a' && (e.ctrlKey || e.metaKey))) return;
-    e.preventDefault();
+    if (!box) return;
     const which = box.id === 'staged' ? 'staged' : 'unstaged';
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      local.load(selection.move(which, nav.data, e.key === 'ArrowDown' ? 1 : -1, { shift: e.shiftKey }));
+      renderChanges();
+      // A long list scrolls: keep the row the diff is for in view (jsdom has no scrollIntoView)
+      const at = selection.target();
+      if (at) /** @type {any} */ (box.querySelector(`li[data-i="${at.index}"]`))?.scrollIntoView?.({ block: 'nearest' });
+      return;
+    }
+    if (!(e.key === 'a' && (e.ctrlKey || e.metaKey))) return;
+    e.preventDefault();
     selection.selectAll(which, nav.data);
     renderChanges();
     // The webview host triggers a native "select all" despite preventDefault and turns the whole page blue

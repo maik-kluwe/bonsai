@@ -10,6 +10,7 @@ interface Selection {
   has(w: Which, p: string): boolean; count(w: Which): number; paths(w: Which): string[];
   target(): { path: string; staged: boolean; index: number } | null;
   click(w: Which, f: Files, i: number, mods?: { shift?: boolean; ctrl?: boolean }): Shown;
+  move(w: Which, f: Files, delta: number, mods?: { shift?: boolean }): Shown;
   selectAll(w: Which, f: Files): void;
   only(w: Which, p: string, f: Files): Shown;
   prune(f: Files): void;
@@ -73,6 +74,59 @@ describe('clicking', () => {
     assert.equal(s.count('unstaged'), 0);
     assert.deepEqual(s.paths('staged'), ['x']);
     assert.equal(s.target()?.staged, true);
+  });
+});
+
+describe('arrow keys', () => {
+  test('Down selects the next file only and shows its diff', () => {
+    const s = createSelection(), f = files(['a', 'b', 'c']);
+    s.click('unstaged', f, 0);
+    assert.deepEqual(s.move('unstaged', f, 1), { path: 'b', staged: false });
+    assert.deepEqual(s.paths('unstaged'), ['b']);
+    assert.deepEqual(s.target(), { path: 'b', staged: false, index: 1 });
+  });
+
+  test('Up goes back, and at either end the selection stays where it is', () => {
+    const s = createSelection(), f = files(['a', 'b', 'c']);
+    s.click('unstaged', f, 1);
+    assert.deepEqual(s.move('unstaged', f, -1), { path: 'a', staged: false });
+    assert.deepEqual(s.move('unstaged', f, -1), { path: 'a', staged: false }, 'first stays');
+    s.click('unstaged', f, 2);
+    assert.deepEqual(s.move('unstaged', f, 1), { path: 'c', staged: false }, 'last stays');
+    assert.deepEqual(s.paths('unstaged'), ['c']);
+  });
+
+  test('in a list the diff is not in, the first arrow press selects its first file', () => {
+    const s = createSelection(), f = files(['a', 'b'], ['x', 'y']);
+    s.click('unstaged', f, 1);
+    assert.deepEqual(s.move('staged', f, 1), { path: 'x', staged: true });
+    assert.equal(s.count('unstaged'), 0);
+    s.click('unstaged', f, 1);
+    assert.deepEqual(s.move('staged', f, -1), { path: 'x', staged: true }, 'also with Up');
+  });
+
+  test('a file that is in both lists counts only in the list its diff is shown for', () => {
+    const s = createSelection(), f = files(['a', 'b'], ['a']);
+    s.click('staged', f, 0);
+    assert.deepEqual(s.move('unstaged', f, 1), { path: 'a', staged: false }, 'starts at the top, not after a');
+  });
+
+  test('Shift+arrow grows the range from the anchor and shrinks it again going back', () => {
+    const s = createSelection(), f = files(['a', 'b', 'c', 'd']);
+    s.click('unstaged', f, 1);
+    s.move('unstaged', f, 1, { shift: true });
+    assert.deepEqual(s.move('unstaged', f, 1, { shift: true }), { path: 'd', staged: false });
+    assert.deepEqual(s.paths('unstaged').sort(), ['b', 'c', 'd']);
+    s.move('unstaged', f, -1, { shift: true });
+    assert.deepEqual(s.paths('unstaged').sort(), ['b', 'c']);
+    s.move('unstaged', f, -1, { shift: true });
+    s.move('unstaged', f, -1, { shift: true });
+    assert.deepEqual(s.paths('unstaged').sort(), ['a', 'b'], 'past the anchor it grows the other way');
+  });
+
+  test('on an empty list there is nothing to select', () => {
+    const s = createSelection();
+    assert.equal(s.move('unstaged', files([]), 1), null);
   });
 });
 

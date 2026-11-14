@@ -39,6 +39,28 @@ describe('the lists', () => {
   });
 });
 
+describe('the arrow keys', () => {
+  const selected = (list: 'unstaged' | 'staged') => [...s.page.document.querySelectorAll(`#${list} li.selected .fname`)].map(e => e.textContent);
+
+  test('move through a list and show each file\'s diff', async () => {
+    await localChanges();
+    s.h.t.write('new.txt', 'n\n'); s.h.t.write('z.txt', 'z\n');
+    await s.click('#refresh');
+    await s.click('#unstaged li');
+    assert.deepEqual(selected('unstaged'), ['a.txt']);
+
+    await s.key('#unstaged', 'ArrowDown');
+    assert.deepEqual(selected('unstaged'), ['new.txt']);
+    assert.equal(s.page.text('#diff .dhead .fname'), 'new.txt', 'its diff is shown');
+
+    await s.key('#unstaged', 'ArrowDown', { shiftKey: true });
+    assert.deepEqual(selected('unstaged'), ['new.txt', 'z.txt'], 'Shift extends');
+    await s.key('#unstaged', 'ArrowUp');
+    assert.deepEqual(selected('unstaged'), ['new.txt']);
+    assert.deepEqual(names('staged'), [], 'nothing was staged on the way');
+  });
+});
+
 describe('a whole file', () => {
   test('is staged with the button or a double click and unstaged the same way', async () => {
     await localChanges();
