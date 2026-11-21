@@ -182,11 +182,30 @@ export class GitService {
   /**
    * Pushes through the CLI, unlike the rest of the toolbar: the Git extension's push does not say what the server
    * answered. No prompt: nobody could answer it here, and the command would hang.
+   * @param onOutput gets what Git and its hooks print while the push runs
    * @returns what Git printed
    */
-  async push(o: PushOptions): Promise<string> {
-    const { stdout, stderr } = await this.git.runOutput(pushArgs(o), undefined, [], { GIT_TERMINAL_PROMPT: '0' });
-    return stderr + stdout;
+  async push(o: PushOptions, onOutput?: (chunk: string) => void): Promise<string> {
+    try {
+      const { stdout, stderr } = await this.git.runOutput(pushArgs(o), undefined, [], { GIT_TERMINAL_PROMPT: '0' }, onOutput);
+      return stderr + stdout;
+    } catch (e) {
+      // A hook that refuses says why on stdout; Git's own line ("failed to push some refs") is all that is on stderr then
+      const { stdout, stderr } = e as { stdout?: string; stderr?: string };
+      if (stdout?.trim() && stderr !== undefined) throw Object.assign(new Error(`${stdout.trim()}\n${stderr.trim()}`), { stdout, stderr });
+      throw e;
+    }
+  }
+
+  /** Whether Git would run the hook `name` here: it exists (in `core.hooksPath` or `.git/hooks`) and, off Windows, can be executed. */
+  async hasHook(name: string): Promise<boolean> {
+    try {
+      const file = path.resolve(this.git.root, (await this.run(['rev-parse', '--git-path', `hooks/${name}`])).trim());
+      await fs.access(file, process.platform === 'win32' ? fs.constants.F_OK : fs.constants.X_OK);
+      return (await fs.stat(file)).isFile();
+    } catch {
+      return false;
+    }
   }
 
   /** Diff of a local change: staged = HEAD ↔ index, otherwise index ↔ working copy. */

@@ -45,6 +45,14 @@ export class ScriptedUi implements Ui {
     this.conflictFiles = files;
   }
   error(message: string) { this.errors.push(message); }
+  /** The titles of the live outputs that were opened, and what was written to them. */
+  liveTitles: string[] = [];
+  liveText = '';
+  liveOutput(title: string) {
+    this.liveTitles.push(title);
+    this.liveText = '';
+    return (text: string) => { this.liveText += text; };
+  }
   async saveFile(defaultPath: string) {
     this.asked.push(`save: ${defaultPath}`);
     return this.saveAnswer;

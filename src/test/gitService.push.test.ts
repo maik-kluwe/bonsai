@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, test } from 'node:test';
 import { strict as assert } from 'assert';
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
@@ -441,6 +441,44 @@ describe('pushing', () => {
   test('without a word from the server no window opens', async () => {
     await send();
     assert.deepEqual(results(), []);
+  });
+
+  /** A hook of the local repository (the one that runs before the push, on the client). */
+  const localHook = (name: string, script: string, dir = path.join(h.t.dir, '.git', 'hooks')) => {
+    mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, name);
+    writeFileSync(file, script);
+    chmodSync(file, 0o755);
+  };
+
+  test('a pre-push hook is noticed: its output is shown while it runs, in its own window', async () => {
+    localHook('pre-push', '#!/bin/sh\necho "running the tests"\n');
+    await send();
+    assert.deepEqual(h.ui.liveTitles, ['Bonsai: Git hook pre-push']);
+    assert.match(h.ui.liveText, /running the tests/);
+    assert.equal(remote('rev-parse', 'refs/heads/main'), h.t.git('rev-parse', 'HEAD').trim(), 'and the push went through');
+  });
+
+  test('a hook that refuses stops the push, and its words are in the window and in the error', async () => {
+    localHook('pre-push', '#!/bin/sh\necho "lint failed: 3 errors"\nexit 1\n');
+    await assert.rejects(send(), /lint failed: 3 errors/);
+    assert.match(h.ui.liveText, /lint failed: 3 errors/);
+    assert.equal(existsSync(path.join(bare, 'refs', 'heads', 'main')), false, 'nothing reached the server');
+  });
+
+  test('without a hook the window stays closed; the hook is also found in core.hooksPath', async () => {
+    await send();
+    assert.deepEqual(h.ui.liveTitles, []);
+    assert.equal(await h.svc.hasHook('pre-push'), false);
+    // A hook that is not executable is not run by Git (Linux, macOS), so it is not announced either
+    const shared = path.join(h.t.dir, 'shared-hooks');
+    localHook('pre-push', '#!/bin/sh\ntrue\n', shared);
+    h.t.git('config', 'core.hooksPath', shared);
+    assert.equal(await h.svc.hasHook('pre-push'), true);
+    if (process.platform !== 'win32') {
+      chmodSync(path.join(shared, 'pre-push'), 0o644);
+      assert.equal(await h.svc.hasHook('pre-push'), false);
+    }
   });
 
   test('a push that is behind is refused, and force goes through with the lease', async () => {

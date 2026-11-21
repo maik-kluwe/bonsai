@@ -27,6 +27,11 @@ export interface Ui {
   pickMany<T extends PickItem>(items: T[], o: { title: string; placeHolder?: string }): Promise<T[] | undefined>;
   /** Save dialog starting at `defaultPath`; the chosen path, or undefined if cancelled. */
   saveFile(defaultPath: string): Promise<string | undefined>;
+  /**
+   * Opens the Output panel on `title` (emptied) for a command that takes a while and has something to say on the way,
+   * such as a pre-push hook. The returned function adds text to it.
+   */
+  liveOutput(title: string): (text: string) => void;
 }
 
 export const vscodeUi: Ui = {
@@ -56,4 +61,18 @@ export const vscodeUi: Ui = {
   async saveFile(defaultPath) {
     return (await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(defaultPath) }))?.fsPath;
   },
+  liveOutput(title) {
+    const channel = outputChannel(title);
+    channel.clear();
+    channel.show(true); // the Bonsai panel keeps the focus
+    return text => channel.append(text);
+  },
 };
+
+const channels = new Map<string, vscode.OutputChannel>();
+/** One channel per title for the whole session; a new one for every push would fill the list in the Output panel. */
+function outputChannel(title: string): vscode.OutputChannel {
+  let channel = channels.get(title);
+  if (!channel) channels.set(title, channel = vscode.window.createOutputChannel(title));
+  return channel;
+}

@@ -520,9 +520,11 @@ export async function runPullInto(c: FlowCtx, full: string): Promise<void> {
  * goes through the Git extension, which can; its push does not report the server's answer, and it cannot send tags.
  */
 export async function runPush(c: FlowCtx, o: PushOptions): Promise<string> {
+  // A pre-push hook can run for a long time (tests, linting): its output is shown while it runs, not only afterwards
+  const live = await c.svc.hasHook('pre-push') ? c.ui.liveOutput(t('hookOutputTitle', 'pre-push')) : undefined;
   const output = await c.progress('Push', async () => {
     try {
-      return await c.svc.push(o);
+      return await c.svc.push(o, live);
     } catch (e) {
       if (o.tags || !isAuthFailure(String((e as Error).message))) throw e;
       await c.api(c.repo.push(o.remote, `${o.branch}:${o.remoteBranch}`, o.track, o.force ? ForcePushMode.ForceWithLease : undefined));

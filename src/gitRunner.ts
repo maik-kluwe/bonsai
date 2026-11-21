@@ -23,8 +23,11 @@ export class GitRunner {
     return (await this.runOutput(args, stdin, okCodes, env)).stdout;
   }
 
-  /** Like `run`, for commands that report on stderr even when they succeed (`git push`). */
-  runOutput(args: string[], stdin?: string, okCodes: number[] = [], env?: NodeJS.ProcessEnv): Promise<{ stdout: string; stderr: string }> {
+  /**
+   * Like `run`, for commands that report on stderr even when they succeed (`git push`).
+   * @param onOutput gets what the command prints while it runs (stdout and stderr as they come), e.g. for a hook that takes a while
+   */
+  runOutput(args: string[], stdin?: string, okCodes: number[] = [], env?: NodeJS.ProcessEnv, onOutput?: (chunk: string) => void): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
       const child = execFile(this.gitPath, args, { cwd: this.root, maxBuffer: 64 * 1024 * 1024, ...(env && { env: { ...process.env, ...env } }) }, (err, stdout, stderr) => {
         const code = (err as NodeJS.ErrnoException & { code?: unknown })?.code;
@@ -34,6 +37,7 @@ export class GitRunner {
         else resolve({ stdout, stderr });
       });
       if (stdin !== undefined) child.stdin?.end(stdin);
+      if (onOutput) for (const stream of [child.stdout, child.stderr]) stream?.setEncoding('utf8').on('data', onOutput);
     });
   }
 
