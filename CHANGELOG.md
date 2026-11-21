@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 - 2026-11-21
 
 ### Added
 - A double-click on a commit in the graph checks out the branch that points at it. With several branches on one commit a small menu asks which one.
