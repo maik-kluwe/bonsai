@@ -9,7 +9,7 @@ import { lines } from './helpers';
 import { handleRepoMessage } from '../messages';
 import type { FetchOptions } from '../git';
 import type { PullInfo } from '../protocol';
-import { PULL_CHOICE_KEY } from '../flows';
+import { PULL_CHOICE_KEY, freshness } from '../flows';
 
 /**
  * A work repository with a server (a bare repository) and a second clone that plays the colleague who pushes. The
@@ -277,6 +277,42 @@ describe('the pull in two steps', () => {
     s.server('branch', '-D', 'old');
     await prepare();
     assert.equal(s.h.t.tryGit('rev-parse', '--verify', '-q', 'refs/remotes/origin/old').code, 1);
+  });
+
+  test('a second pull right after the first does not fetch again, but one after the window does; the Fetch button always does', async () => {
+    let now = 1_000_000;
+    freshness.now = () => now;
+    try {
+      await prepare();
+      await prepare();
+      assert.equal(s.fetched.length, 1, 'the second dialog opens without waiting for the network');
+      assert.equal(info().length, 2);
+
+      now += freshness.windowMs - 1;
+      await prepare();
+      assert.equal(s.fetched.length, 1, 'still fresh');
+
+      await handleRepoMessage({ type: 'fetch', remote: 'origin' }, s.h.ctx);
+      assert.equal(s.fetched.length, 2, 'the button asks the server whatever happened before');
+      now += freshness.windowMs - 1;
+      await prepare();
+      assert.equal(s.fetched.length, 2, 'and what it fetched counts as fresh');
+
+      now += 2;
+      await prepare();
+      assert.equal(s.fetched.length, 3, 'after the window the pull fetches again');
+    } finally {
+      freshness.now = () => Date.now();
+    }
+  });
+
+  test('another repository has its own freshness', async () => {
+    await prepare();
+    const other = new Setup();
+    try {
+      await handleRepoMessage({ type: 'pullPrepare' }, other.h.ctx);
+      assert.equal(other.fetched.length, 1);
+    } finally { other.dispose(); }
   });
 
   test('without an upstream the user is told, and no dialog opens', async () => {

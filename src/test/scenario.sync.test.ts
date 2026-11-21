@@ -3,6 +3,7 @@ import { strict as assert } from 'assert';
 import { readFileSync } from 'fs';
 import * as path from 'path';
 import { Scenario } from './scenario';
+import { freshness } from '../flows';
 
 // README, "Stay in sync": Fetch, Pull and the conflict window, from the click to what the view shows afterwards.
 // Real view, real handlers, real Git repositories (a server and a colleague who pushes); see scenario.ts for what is left out.
@@ -66,6 +67,7 @@ describe('Pull', () => {
     await s.click('#pulldlg [data-pullact="close"]');
 
     s.colleaguePushes('a.txt', 4, 'two');
+    freshness.at.clear(); // the first fetch is long ago; within 20 seconds the second pull would not ask the server again
     await pull();
     assert.match(s.page.text('#pulldlg'), /2 new commits/);
   });

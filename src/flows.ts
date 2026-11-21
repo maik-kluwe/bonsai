@@ -312,9 +312,30 @@ export async function runAction(c: FlowCtx, action: 'stash' | 'snapshot'): Promi
   }
 }
 
+/**
+ * When each remote of each repository was fetched last, so that two pulls in quick succession do not wait for the
+ * network twice. Kept in memory only: a new session starts with a fetch.
+ */
+export const freshness = {
+  /** How long a fetch counts as fresh. */
+  windowMs: 20_000,
+  now: () => Date.now(),
+  at: new Map<string, number>(),
+  key: (c: FlowCtx, remote: string) => `${c.repo.rootUri.fsPath}\n${remote}`,
+  /** Notes a fetch of `remote`, or of all remotes. */
+  mark(c: FlowCtx, remote?: string) {
+    for (const r of remote ? [remote] : c.repo.state.remotes.map(x => x.name)) freshness.at.set(freshness.key(c, r), freshness.now());
+  },
+  isFresh(c: FlowCtx, remote: string) {
+    const last = freshness.at.get(freshness.key(c, remote));
+    return last !== undefined && freshness.now() - last < freshness.windowMs;
+  },
+};
+
 /** Fetches from one remote, or from all; what is gone on the server is removed here, too. */
-export function runFetch(c: FlowCtx, remote?: string): Promise<void> {
-  return c.progress('Fetch', () => c.api(c.repo.fetch(remote ? { remote, prune: true } : { all: true, prune: true })));
+export async function runFetch(c: FlowCtx, remote?: string): Promise<void> {
+  await c.progress('Fetch', () => c.api(c.repo.fetch(remote ? { remote, prune: true } : { all: true, prune: true })));
+  freshness.mark(c, remote);
 }
 
 /** The checked-out branch and the remote branch it tracks, or undefined after telling the user there is none. */
@@ -335,7 +356,11 @@ export async function runPullPrepare(c: FlowCtx): Promise<PullInfo | undefined> 
   const target = await pullTarget(c);
   if (!target) return undefined;
   const { remote } = remoteBranch(c, target.upstream);
-  await c.progress('Fetch', () => c.api(c.repo.fetch({ remote, prune: true })));
+  // A fetch a few seconds ago is as good as a new one (the Fetch button always asks the server)
+  if (!freshness.isFresh(c, remote)) {
+    await c.progress('Fetch', () => c.api(c.repo.fetch({ remote, prune: true })));
+    freshness.mark(c, remote);
+  }
   // The prune may just have removed the branch the upstream setting points to
   const head = (await c.svc.refs()).find(r => r.kind === 'head' && r.name === target.branch);
   if (!head?.upstream || head.gone) { c.ui.error(t('errUpstreamGone', target.upstream)); return undefined; }
