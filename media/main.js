@@ -39,7 +39,7 @@
   // Text and buttons of the banner of a running operation, shared with the tests (media/mergebar.js)
   const { mergeBanner } = /** @type {any} */ (window).BonsaiMergeBar;
   // Context menu contents as data, shared with the tests (media/menus.js)
-  const { createMenus, localBranchName } = /** @type {any} */ (window).BonsaiMenus;
+  const { createMenus, localBranchName, checkoutTargets } = /** @type {any} */ (window).BonsaiMenus;
   // Marked lines inside a diff hunk, shared with the tests (media/linesel.js)
   const { createLineSelection } = /** @type {any} */ (window).BonsaiLineSel;
   const lineSel = createLineSelection();
@@ -442,6 +442,14 @@
     if (nav.data.commits[i]?.hash === WORKTREE) { setView('changes'); return; }
     select(i, false);
     list.focus();
+    // Double-click = check out the branch of this commit. Detected via e.detail: the first click re-renders the rows
+    if (e.detail === 2 && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      const c = nav.data.commits[i];
+      if (c.stash !== undefined) return;
+      const targets = checkoutTargets(nav.refsAt(c.hash), nav.data.currentBranch);
+      if (targets.length === 1) vscode.postMessage({ type: 'checkout', ref: targets[0] });
+      else if (targets.length > 1) showMenu(e, menus.checkoutChoices(targets));
+    }
   });
   rowsEl.addEventListener('contextmenu', e => {
     const row = closest(/** @type {HTMLElement} */ (e.target), '.row');

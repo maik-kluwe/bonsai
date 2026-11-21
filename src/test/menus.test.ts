@@ -10,13 +10,16 @@ interface Menus {
   stash(c: { index: number; name: string }): Item[];
   ref(c: { kind: string; name: string; hash: string; index?: number; currentBranch?: string; upstream?: string; ahead?: number; behind?: number; gone?: boolean }): Item[];
   commit(c: { hash: string; subject: string; branches: string[]; parents: string[]; head?: string; currentBranch?: string }): Item[];
+  checkoutChoices(refs: string[]): Item[];
   detailFile(c: { hash: string; parent?: string; file: { status: string; path: string; oldPath?: string; base?: string; target?: string } }): Item[];
   changes(c: { which: 'staged' | 'unstaged'; selected: Sel[]; currentBranch?: string; theirs?: string; operation?: boolean }): Item[];
   stashDropdown(c: { stashes: { name: string; label: string; index: number }[] }): Item[];
   recentMessages(c: { messages: { subject: string; message: string }[] }): Item[];
 }
-const { createMenus }: { createMenus(t: (k: string, ...a: unknown[]) => string): Menus } =
-  require('../../media/menus.js');
+const { createMenus, checkoutTargets }: {
+  createMenus(t: (k: string, ...a: unknown[]) => string): Menus;
+  checkoutTargets(refs: { kind: string; name: string }[], currentBranch?: string): string[];
+} = require('../../media/menus.js');
 
 /** Translation stub: the key, with arguments appended so tests can see what was passed. */
 const t = (k: string, ...a: unknown[]) => (a.length ? `${k}:${a.join(',')}` : k);
@@ -154,6 +157,24 @@ describe('commit menu', () => {
 
   test('a merge commit cannot be saved as a patch', () => {
     assert.ok(!labels(m.commit(ctx({ parents: ['a', 'b'] }))).includes('savePatchEntry'));
+  });
+});
+
+describe('double click on a commit', () => {
+  const targets = (refs: { kind: string; name: string }[], current?: string) => checkoutTargets(refs, current);
+  const head = (name: string) => ({ kind: 'head', name });
+  const remote = (name: string) => ({ kind: 'remote', name });
+
+  test('offers the local branches, then remote branches without a local one; never the current branch or origin/HEAD', () => {
+    assert.deepEqual(targets([head('dev')], 'main'), ['dev']);
+    assert.deepEqual(targets([head('main'), remote('origin/main')], 'main'), [], 'nothing to switch to');
+    assert.deepEqual(targets([head('dev'), remote('origin/dev'), remote('origin/other'), remote('origin/HEAD')], 'main'), ['dev', 'other']);
+    assert.deepEqual(targets([{ kind: 'tag', name: 'v1' }], 'main'), [], 'tags are no branches');
+    assert.deepEqual(targets([head('a'), head('b')], undefined), ['a', 'b'], 'several: the view lets the user choose');
+  });
+
+  test('the choice menu is one checkout per branch', () => {
+    assert.deepEqual(msgs(m.checkoutChoices(['a', 'b'])), [{ type: 'checkout', ref: 'a' }, { type: 'checkout', ref: 'b' }]);
   });
 });
 

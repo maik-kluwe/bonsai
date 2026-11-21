@@ -61,6 +61,27 @@ describe('a commit', () => {
   });
 });
 
+describe('a double click on a commit', () => {
+  test('checks out the branch that points at it, and does nothing on the checked-out one or a stash', async () => {
+    await repoWithEverything();
+    const branch = () => s.h.t.git('branch', '--show-current').trim();
+    await s.click(`.row[data-i="${row('main moves on')}"]`, { detail: 2 });
+    await s.click(`.row[data-i="${row('parked')}"]`, { detail: 2 });
+    assert.deepEqual(s.page.sentOf('checkout'), [], 'main is checked out already, a stash is no branch');
+
+    await s.click(`.row[data-i="${row('add login')}"]`, { detail: 2 });
+    assert.deepEqual(s.page.sentOf('checkout'), [{ type: 'checkout', ref: 'feature/login' }]);
+    assert.equal(branch(), 'feature/login');
+    assert.deepEqual(s.page.errors, []);
+  });
+
+  test('a commit without a branch stays as it is: a detached HEAD is entered on purpose, from the menu', async () => {
+    await repoWithEverything();
+    await s.click(`.row[data-i="${row('first commit')}"]`, { detail: 2 });
+    assert.deepEqual(s.page.sentOf('checkout'), []);
+  });
+});
+
 describe('the filter box', () => {
   test('dims what does not match the message, the author or the hash, and Enter jumps to the next match', async () => {
     await repoWithEverything();

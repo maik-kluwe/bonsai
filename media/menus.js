@@ -126,6 +126,11 @@
       ];
     }
 
+    /** What a double-click on a commit with several branches offers: one checkout per branch. `refs` are what Git is asked to check out. */
+    function checkoutChoices(refs) {
+      return refs.map(b => send(t('checkoutRef', b), { type: 'checkout', ref: b }));
+    }
+
     /** File in the commit details; `file` is a FileChange. */
     function detailFile({ hash, parent, file }) {
       return [
@@ -190,10 +195,27 @@
         : [{ label: t('noRecent') }];
     }
 
-    return { stash, ref, dropBranch, commit, detailFile, changes, stashDropdown, recentMessages };
+    return { stash, ref, dropBranch, commit, checkoutChoices, detailFile, changes, stashDropdown, recentMessages };
   }
 
-  const api = { createMenus, localBranchName };
+  /**
+   * The branches a double-click on a commit may check out: its local branches, and its remote branches that have no
+   * local one yet (Git creates it then). The checked-out branch is left out, as is `origin/HEAD`. Commits without a
+   * branch give nothing: a detached HEAD is only entered on purpose, through the context menu.
+   * @param {{ kind: string, name: string }[]} refs what points at the commit
+   * @param {string | undefined} currentBranch
+   * @returns {string[]} what to check out
+   */
+  function checkoutTargets(refs, currentBranch) {
+    const local = refs.filter(r => r.kind === 'head').map(r => r.name);
+    const remote = refs
+      .filter(r => r.kind === 'remote' && !r.name.endsWith('/HEAD'))
+      .map(r => localBranchName(r.name))
+      .filter(n => !local.includes(n));
+    return [...local, ...remote].filter(n => n !== currentBranch);
+  }
+
+  const api = { createMenus, localBranchName, checkoutTargets };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.BonsaiMenus = api;
 })(typeof window !== 'undefined' ? window : globalThis);
