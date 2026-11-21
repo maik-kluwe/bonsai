@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- A double-click on a commit in the graph checks out the branch that points at it. With several branches on one commit a small menu asks which one.
+- A `pre-push` hook is noticed: the Output panel opens and shows what the hook prints while it runs. When the hook refuses the push, its message is part of the error.
+
+### Changed
+- Pull skips the fetch when the remote was fetched in the last 20 seconds. The Fetch button always fetches.
+
+### Fixed
+- Links in the Activity popup are clickable, as in the push window.
+- Moving the Bonsai tab to another window (or back) no longer resets the view. The chosen repository stays, and so do the filter, the selected commit, the scroll position, the tab (Commits or Local Changes) and the draft of the commit message.
+
 ## 0.4.0 - 2026-11-14
 
 ### Added

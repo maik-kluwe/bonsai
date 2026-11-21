@@ -37,6 +37,7 @@ Before you start a merge, cherry-pick or revert, Bonsai does a dry run and names
 
 - **Interactive rebase:** pick, reword, squash, fix up, drop or reorder commits in a dialog. Git never opens an editor.
 - **Rebase, merge, cherry-pick, revert and reset** from the context menu of a commit or branch.
+- **Double-click a commit** that has a branch on it to check that branch out.
 - **Drag a branch** onto another one to merge or rebase. This works when one of the two is the current branch.
 - **Stashes:** save, apply, rename and delete them, and look inside before applying. To put away only some files, select them in Local Changes and right-click.
 
@@ -44,9 +45,11 @@ Before you start a merge, cherry-pick or revert, Bonsai does a dry run and names
 
 Fetch, Pull and Push sit in the toolbar, and each branch shows how far it is ahead of or behind its upstream.
 
-Fetch asks from which remote, or from all of them, and removes the remote branches that are gone on the server. Pull fetches first and then shows what it is about to do. The boxes **Rebase instead of merge** and **Stash and reapply local changes** start as you left them the last time (the first time, the rebase box follows your Git settings and the stash box is off). Under them the dialog says whether Git would refuse the pull because of your local changes, and whether they will come back cleanly or conflict, before anything happens. If they conflict, a window lists the files, the stash stays and the conflict banner takes over.
+Fetch asks from which remote, or from all of them, and removes the remote branches that are gone on the server. Pull fetches first (unless the remote was fetched in the last 20 seconds) and then shows what it is about to do. The boxes **Rebase instead of merge** and **Stash and reapply local changes** start as you left them the last time (the first time, the rebase box follows your Git settings and the stash box is off). Under them the dialog says whether Git would refuse the pull because of your local changes, and whether they will come back cleanly or conflict, before anything happens. If they conflict, a window lists the files, the stash stays and the conflict banner takes over.
 
 Push asks first: which branch, where to, whether to track it, push all tags or force (with lease). If the push creates the remote branch and the server has something to say, Bonsai shows it afterwards, so the link GitLab or GitHub prints for a new merge or pull request is one click away.
+
+If the repository has a `pre-push` hook, the Output panel opens and shows what the hook prints while it runs. If the hook refuses the push, its message is in the error.
 
 Pushing uses your Git credentials, such as the Git Credential Manager or an SSH key. If Git can't sign in by itself, Bonsai falls back to VS Code's sign-in; the server's answer isn't shown then.
 
