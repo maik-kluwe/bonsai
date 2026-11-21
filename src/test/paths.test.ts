@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test';
 import { strict as assert } from 'assert';
 import * as path from 'path';
-import { isInside, repoRelative } from '../paths';
+import { isInside, repoRelative, sameRepo } from '../paths';
 
 describe('repoRelative', () => {
   test('Windows and POSIX: "/" as separator, umlauts and spaces stay, case of drive and folders does not matter', () => {
@@ -31,5 +31,15 @@ describe('isInside', () => {
       ['C:\\r', 'D:\\other\\x.txt', path.win32, false],
     ];
     for (const [root, file, flavour, inside] of cases) assert.equal(isInside(root, file, flavour), inside, file);
+  });
+});
+
+describe('sameRepo', () => {
+  test('two handles of one repository are the same, whatever object they are; nothing is the same as nothing', () => {
+    const handle = (fsPath: string) => ({ rootUri: { fsPath } });
+    assert.equal(sameRepo(handle('/r/a'), handle('/r/a')), true);
+    assert.equal(sameRepo(handle('/r/a'), handle('/r/b')), false);
+    assert.equal(sameRepo(undefined, undefined), false);
+    assert.equal(sameRepo(handle('/r/a'), undefined), false);
   });
 });

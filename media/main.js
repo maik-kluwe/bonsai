@@ -120,6 +120,7 @@
         showNewBranch();
         loadMoreIfNeeded(); // a short list that does not fill the panel never scrolls
         if (nav.detailsGone()) clearDetails();
+        restoreAfterReload();
         break;
       }
       case 'details': renderDetails(m.details); break;
@@ -139,6 +140,7 @@
         subjectEl.value = bodyEl.value = '';
         amendEl.checked = false;
         updateCommitBox();
+        keepMessage();
         break;
       case 'error':
         nav.failed();
@@ -179,7 +181,7 @@
     splitLinks: (/** @type {any} */ (window).BonsaiPushDialog).splitLinks,
   });
   repoSel.addEventListener('change', () => vscode.postMessage({ type: 'selectRepo', root: repoSel.value }));
-  filterEl.addEventListener('input', () => { nav.setFilter(filterEl.value); renderRows(); loadMoreIfNeeded(); });
+  filterEl.addEventListener('input', () => { nav.setFilter(filterEl.value); keep({ filter: filterEl.value }); renderRows(); loadMoreIfNeeded(); });
   filterEl.addEventListener('keydown', e => {
     if (e.key !== 'Enter' || !nav.filter) return;
     const i = nav.findMatch(e.shiftKey);
@@ -190,10 +192,18 @@
 
   function setView(/** @type {string} */ v) {
     nav.setView(v);
+    keep({ view: v });
     $('#graph-view').hidden = v !== 'graph';
     $('#changes-view').hidden = v !== 'changes';
     document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', /** @type {HTMLElement} */ (n).dataset.view === v));
-    if (v === 'graph') renderRows();
+    if (v === 'graph') { applyScroll(); renderRows(); }
+  }
+  /** A scroll position waiting for the list to be visible: a hidden list cannot scroll (see "After a reload"). */
+  let scrollWaiting = 0;
+  function applyScroll() {
+    if (!scrollWaiting || $('#graph-view').hidden) return;
+    list.scrollTop = scrollWaiting;
+    scrollWaiting = 0;
   }
   $('#nav').addEventListener('click', e => {
     const n = closest(/** @type {HTMLElement} */ (e.target), '.nav-item');
@@ -412,7 +422,7 @@
   function loadMoreIfNeeded() {
     nav.loadMoreIfNeeded({ scrollTop: list.scrollTop, clientHeight: list.clientHeight, scrollHeight: list.scrollHeight, rowH: ROW_H });
   }
-  list.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { renderRows(); loadMoreIfNeeded(); }); });
+  list.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (!$('#graph-view').hidden) keep({ scrollTop: list.scrollTop }); renderRows(); loadMoreIfNeeded(); }); });
   new ResizeObserver(() => renderRows()).observe(list);
 
   /** Nothing to show: no commit selected, or the pane is waiting for its first answer. */
@@ -424,6 +434,7 @@
   function select(/** @type {number} */ i, /** @type {boolean} */ scroll) {
     const kind = nav.select(i);
     if (!kind) return;
+    keep({ selectedHash: kind === 'commit' ? nav.data.commits[i].hash : undefined });
     if (scroll) {
       const top = i * ROW_H;
       if (top < list.scrollTop || top + ROW_H > list.scrollTop + list.clientHeight) {
@@ -661,6 +672,7 @@
     subjectEl.value = subject;
     bodyEl.value = body;
     updateCommitBox();
+    keepMessage();
   }
 
   function renderMerge() {
@@ -1044,10 +1056,14 @@
     if (commitBlocker(state)) return;
     vscode.postMessage({ type: 'commit', message: state.message, amend: state.amend });
   }
-  subjectEl.addEventListener('input', updateCommitBox);
+  /** The draft of the message stays across a reload of the page (see "After a reload"). */
+  const keepMessage = () => keep({ subject: subjectEl.value, body: bodyEl.value, amend: amendEl.checked });
+  subjectEl.addEventListener('input', () => { updateCommitBox(); keepMessage(); });
+  bodyEl.addEventListener('input', keepMessage);
   amendEl.addEventListener('change', () => {
     if (amendEl.checked && !subjectEl.value && !bodyEl.value) vscode.postMessage({ type: 'lastMessage' });
     updateCommitBox();
+    keepMessage();
   });
   $('#c-commit').addEventListener('click', commit);
 
@@ -1340,6 +1356,30 @@
     const rect = $('#center').getBoundingClientRect();
     document.documentElement.style.setProperty('--details-h', Math.max(80, Math.min(rect.bottom - e.clientY, rect.height - 80)) + 'px');
   });
+
+  // ---------- After a reload ----------
+
+  // Moving the tab to another window loads the page anew while the host stays as it is. What the user was doing comes
+  // back from vscode.getState: the filter, the tab, the draft of the commit message, and, with the first commits,
+  // the selected commit and the scroll position. (Which repository is chosen is the host's business.)
+  const kept = vscode.getState() ?? {};
+  if (typeof kept.filter === 'string' && kept.filter) { filterEl.value = kept.filter; nav.setFilter(kept.filter); }
+  if (typeof kept.subject === 'string') subjectEl.value = kept.subject;
+  if (typeof kept.body === 'string') bodyEl.value = kept.body;
+  amendEl.checked = kept.amend === true;
+  updateCommitBox();
+  if (kept.view === 'changes') setView('changes');
+  /** @type {{ hash?: string, scrollTop?: number } | undefined} */
+  let toRestore = { hash: typeof kept.selectedHash === 'string' ? kept.selectedHash : undefined, scrollTop: typeof kept.scrollTop === 'number' ? kept.scrollTop : undefined };
+  /** Once, with the first packet that has commits. */
+  function restoreAfterReload() {
+    if (!toRestore || !nav.data.commits.length) return;
+    const { hash, scrollTop } = toRestore;
+    toRestore = undefined;
+    if (scrollTop) { scrollWaiting = scrollTop; applyScroll(); renderRows(); } // waits when Local Changes is the tab
+    const i = hash ? nav.indexOf(hash) : undefined;
+    if (i !== undefined) select(i, false);
+  }
 
   clearDetails();
   vscode.postMessage({ type: 'ready' });

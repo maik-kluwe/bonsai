@@ -20,7 +20,7 @@ import { lines } from './helpers';
  */
 export class Scenario {
   readonly h = new FlowHarness();
-  readonly page: WebviewPage;
+  page: WebviewPage;
   /** Messages of the view that only the window itself would answer: copy, open an editor and so on. */
   readonly windowMessages: ToHost[] = [];
   private pending: Promise<void>[] = [];
@@ -98,6 +98,17 @@ export class Scenario {
   async open(): Promise<this> {
     await this.settle();
     return this;
+  }
+
+  /**
+   * The page is loaded anew, as when its tab moves to another window: the host stays as it is, the new page starts
+   * with what the old one kept (`getState`) and says `ready` again.
+   */
+  async reload(): Promise<this> {
+    const state = this.page.state;
+    this.page.dom.window.close();
+    this.page = new WebviewPage(m => this.pending.push(this.receive(m)), 'main', state);
+    return this.open();
   }
 
   /** Typing into a field, and the host's answer to it. */

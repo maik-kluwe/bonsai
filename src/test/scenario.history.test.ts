@@ -61,6 +61,37 @@ describe('a commit', () => {
   });
 });
 
+describe('a reload of the page, as when the tab moves to another window', () => {
+  test('brings back the filter, the selected commit and the draft of the message; the host keeps the rest', async () => {
+    await repoWithEverything();
+    await s.click(`.row[data-i="${row('add login')}"]`);
+    await s.type('#filter', 'login');
+    await s.type('#c-subject', 'wip subject');
+    await s.type('#c-body', 'body text');
+    s.page.sent.length = 0;
+
+    await s.reload();
+    assert.equal(s.page.$<HTMLInputElement>('#filter').value, 'login');
+    assert.equal(dimmed().length, 3, 'the filter works again');
+    assert.match(s.page.document.querySelector('.row.selected')?.textContent ?? '', /add login/, 'the same commit is selected');
+    assert.equal(s.page.sentOf('details').at(-1)?.hash, s.h.t.git('rev-parse', 'feature/login').trim(), 'and its details are asked for');
+    assert.equal(s.page.$<HTMLInputElement>('#c-subject').value, 'wip subject');
+    assert.equal(s.page.$<HTMLTextAreaElement>('#c-body').value, 'body text');
+    assert.deepEqual(s.page.errors, []);
+  });
+
+  test('stays on the tab it was on, and a message that was committed is not brought back', async () => {
+    await repoWithEverything();
+    await s.click('.nav-item[data-view="changes"]');
+    await s.type('#c-subject', 'done soon');
+    s.page.send({ type: 'committed' });
+    await s.reload();
+    assert.equal(s.page.$('#changes-view').hidden, false, 'Local Changes again');
+    assert.equal(s.page.$('#graph-view').hidden, true);
+    assert.equal(s.page.$<HTMLInputElement>('#c-subject').value, '', 'the draft is gone with the commit');
+  });
+});
+
 describe('a double click on a commit', () => {
   test('checks out the branch that points at it, and does nothing on the checked-out one or a stash', async () => {
     await repoWithEverything();

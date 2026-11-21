@@ -24,7 +24,14 @@ export class WebviewPage {
    * @param onPost called for every message the view posts, as the host receives it
    * @param kind the main view, or the window of the interactive rebase (whose messages are not `ToHost`: read `sent` with care)
    */
-  constructor(onPost?: (m: ToHost) => void, kind: 'main' | 'rebase' = 'main') {
+  /** What the view keeps with `vscode.setState`; it survives a reload of the page, as in VS Code. */
+  state: Record<string, unknown> | undefined;
+
+  /**
+   * @param savedState what an earlier page of the same panel kept: the view finds it with `getState` when it starts
+   */
+  constructor(onPost?: (m: ToHost) => void, kind: 'main' | 'rebase' = 'main', savedState?: Record<string, unknown>) {
+    this.state = savedState;
     const markup = kind === 'main'
       ? pageHtml({ nonce: 'test', cspSource: 'vscode-resource:', css: 'main.css', uri: f => f, gravatar: false })
       : rebasePageHtml({ nonce: 'test', cspSource: 'vscode-resource:', css: 'rebasedlg.css', uri: f => f });
@@ -33,7 +40,7 @@ export class WebviewPage {
       { runScripts: 'outside-only', pretendToBeVisual: true },
     );
     const w = this.dom.window as unknown as Record<string, unknown> & Window;
-    w.acquireVsCodeApi = () => ({ postMessage: (m: ToHost) => { const copy = JSON.parse(JSON.stringify(m)) as ToHost; this.sent.push(copy); onPost?.(copy); }, getState: () => undefined, setState: () => undefined });
+    w.acquireVsCodeApi = () => ({ postMessage: (m: ToHost) => { const copy = JSON.parse(JSON.stringify(m)) as ToHost; this.sent.push(copy); onPost?.(copy); }, getState: () => this.state, setState: (s: Record<string, unknown>) => { this.state = JSON.parse(JSON.stringify(s)); } });
     w.addEventListener('error', e => this.errors.push(String((e as ErrorEvent).error ?? (e as ErrorEvent).message)));
     // main.js leans on browser features jsdom does not have
     w.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };

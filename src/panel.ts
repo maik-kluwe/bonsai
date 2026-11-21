@@ -4,7 +4,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 import { Status, type API, type Change, type Repository } from './git';
 import { GitService, type CommitInfo, type MergeState, type RefInfo } from './gitService';
 import { parseDiff } from './diff';
-import { repoRelative } from './paths';
+import { repoRelative, sameRepo } from './paths';
 import { isConflict, type ChangeItem } from './changes';
 import { changeItems, readLocalDiff } from './readSnapshot';
 import { avatarHashes } from './avatars';
@@ -95,15 +95,16 @@ export class BonsaiPanel implements vscode.Disposable {
     if (explicitRoot) {
       next = repos.find(r => r.rootUri.fsPath === explicitRoot);
       this.followScm = false;
-    } else if (this.followScm || !this.repo || !repos.includes(this.repo)) {
+    } else if (this.followScm || !this.repo || !repos.some(r => sameRepo(r, this.repo))) {
       next = repos.find(r => r.ui.selected) ?? repos[0];
     } else {
-      next = this.repo;
+      // The same repository, as the extension hands it out now (the stored object may be an older handle)
+      next = repos.find(r => sameRepo(r, this.repo));
     }
 
     this.repoListeners.forEach(d => d.dispose());
     this.repoListeners = repos.map(r => r.ui.onDidChange(() => {
-      if (this.followScm && r.ui.selected && r !== this.repo) this.setRepo(r);
+      if (this.followScm && r.ui.selected && !sameRepo(r, this.repo)) this.setRepo(r);
     }));
 
     this.setRepo(next);
@@ -113,6 +114,9 @@ export class BonsaiPanel implements vscode.Disposable {
     if (repo !== this.repo) {
       this.stateListener?.dispose();
       this.stateListener = repo?.state.onDidChange(() => this.scheduleRefresh());
+    }
+    // Only another repository starts over: the same one, handed out as a new object, keeps its log and its limit
+    if (!sameRepo(repo, this.repo)) {
       this.logCache = undefined;
       this.logLimit = 0;
     }
