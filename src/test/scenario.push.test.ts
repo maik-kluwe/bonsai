@@ -89,6 +89,13 @@ describe('the push dialog', () => {
     await s.click('#pushdlg [data-url]');
     const opened = s.windowMessages.find(m => m.type === 'openUrl');
     assert.ok(opened && 'url' in opened && opened.url === 'https://git.example/mr/new', 'the link goes to the browser');
+
+    // The activity list shows the same output, and its link works as well
+    s.windowMessages.length = 0;
+    await s.click('#activity');
+    await s.click('#activity-pop [data-url]');
+    const fromList = s.windowMessages.find(m => m.type === 'openUrl');
+    assert.ok(fromList && 'url' in fromList && fromList.url === 'https://git.example/mr/new', 'the link in the activity list goes to the browser, too');
   });
 });
 

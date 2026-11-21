@@ -4,9 +4,12 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
   /**
-   * @param {{ pop: HTMLElement, button: HTMLElement, t: (k: string, ...a: any[]) => string, lang: string, post: (m: any) => void }} o
+   * @param {{ pop: HTMLElement, button: HTMLElement, t: (k: string, ...a: any[]) => string, lang: string, post: (m: any) => void,
+   *   splitLinks: (text: string) => { text?: string, url?: string }[] }} o splitLinks cuts what Git printed into text and links
    */
-  function create({ pop, button, t, lang, post }) {
+  function create({ pop, button, t, lang, post, splitLinks }) {
+    /** What Git printed, escaped, with its links clickable (opened by the host, like in the push dialog). */
+    const linked = text => splitLinks(String(text ?? '')).map(p => (p.url ? `<a href="#" data-url="${esc(p.url)}">${esc(p.url)}</a>` : esc(p.text ?? ''))).join('');
     /** @type {any[]} */
     let entries = [];
     /** @type {number | undefined} */
@@ -30,10 +33,10 @@
 
     function detail(e) {
       const when = t(e.ok ? 'activitySucceeded' : 'activityFailed', full(e.time));
-      const cmds = e.commands.map(c => `<div class="act-cmd">$ ${esc(c.command)}</div>${c.output ? `<pre class="act-out${c.ok ? '' : ' bad'}">${esc(c.output)}</pre>` : ''}`).join('');
+      const cmds = e.commands.map(c => `<div class="act-cmd">$ ${esc(c.command)}</div>${c.output ? `<pre class="act-out${c.ok ? '' : ' bad'}">${linked(c.output)}</pre>` : ''}`).join('');
       // A failed command already shows its message above; the error is only new for steps without a command line
       const shown = e.commands.some(c => !c.ok && c.output);
-      const err = e.error && !shown ? `<pre class="act-out bad">${esc(e.error)}</pre>` : '';
+      const err = e.error && !shown ? `<pre class="act-out bad">${linked(e.error)}</pre>` : '';
       const api = e.viaApi ? `<div class="act-note">${esc(t('activityApi'))}</div>` : '';
       return `<div class="act-head"><span class="act-title">${esc(e.title)}</span><span class="act-when${e.ok ? '' : ' bad'}">${esc(when)}</span></div>
         <div class="act-repo">${esc(e.repo)}${e.subtitle && e.ok ? ' · ' + esc(e.subtitle) : ''}</div>${cmds}${err}${api}`;
@@ -48,6 +51,8 @@
 
     button.addEventListener('click', () => (pop.hidden ? open() : close()));
     pop.addEventListener('click', e => {
+      const url = /** @type {HTMLElement} */ (e.target).closest('[data-url]')?.getAttribute('data-url');
+      if (url) { e.preventDefault(); post({ type: 'openUrl', url }); return; }
       const item = /** @type {HTMLElement} */ (e.target).closest('.act-item');
       if (!item) return;
       selectedId = Number(/** @type {HTMLElement} */ (item).dataset.id);

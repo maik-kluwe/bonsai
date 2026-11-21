@@ -176,6 +176,7 @@
   // Popup with what Bonsai did in this session (media/activity.js)
   const activity = /** @type {any} */ (window).BonsaiActivity.create({
     pop: $('#activity-pop'), button: $('#activity'), t, lang: L._lang, post: m => vscode.postMessage(m),
+    splitLinks: (/** @type {any} */ (window).BonsaiPushDialog).splitLinks,
   });
   repoSel.addEventListener('change', () => vscode.postMessage({ type: 'selectRepo', root: repoSel.value }));
   filterEl.addEventListener('input', () => { nav.setFilter(filterEl.value); renderRows(); loadMoreIfNeeded(); });
