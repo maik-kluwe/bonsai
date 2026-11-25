@@ -1,3 +1,4 @@
+import type { Provider } from './providers';
 import { countFiles, type ChangeItem } from './changes';
 import { withStashes, type CommitInfo, type MergeState, type RebaseProgress, type RefInfo } from './gitService';
 import { computeGraph, visibleRows, type GraphRow } from './graph';
@@ -41,6 +42,8 @@ export interface Snapshot {
   merge?: MergeInfo;
   /** Names of the remotes, also those without a branch yet. */
   remotes?: string[];
+  /** The service of a remote, by remote name; see src/providers.ts. */
+  providers?: Record<string, Provider>;
   /** Gravatar hashes by author email, only if the user opted in (`bonsai.gravatar`); see src/avatars.ts. */
   avatars?: Record<string, string>;
 }
@@ -57,6 +60,7 @@ export interface SnapshotInput {
   unstaged: ChangeItem[];
   merge?: MergeInfo;
   remotes?: string[];
+  providers?: Record<string, Provider>;
   /** Text of the "Local changes" row for this file count (comes from i18n). */
   worktreeSubject(files: number): string;
   /** Timestamp of the "Local changes" row in seconds. */
@@ -76,7 +80,7 @@ export function buildSnapshot(i: SnapshotInput): Snapshot {
   const { rows, maxWidth } = computeGraph(commits);
   return {
     type: 'data', commits, more: !!i.more, rows: visibleRows(rows), refs: i.refs, maxWidth, head: i.head,
-    currentBranch: i.currentBranch, staged: i.staged, unstaged: i.unstaged, changeCount, merge: i.merge, remotes: i.remotes,
+    currentBranch: i.currentBranch, staged: i.staged, unstaged: i.unstaged, changeCount, merge: i.merge, remotes: i.remotes, providers: i.providers,
   };
 }
 

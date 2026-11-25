@@ -50,6 +50,20 @@ describe('the graph and the sidebar show every kind of ref', () => {
   });
 });
 
+describe('a remote on a known service', () => {
+  test('its branches carry the mark of the service instead of the cloud, the others keep the cloud', async () => {
+    await repoWithEverything();
+    const { t } = s.h;
+    for (const remote of ['origin', 'other']) t.git('update-ref', `refs/remotes/${remote}/main`, 'main');
+    s.h.repo.state.remotes = [{ name: 'origin', fetchUrl: 'git@github.com:o/r.git' }, { name: 'other', fetchUrl: 'https://example.com/r.git' }];
+    await s.click('#refresh');
+    const viewBox = (name: string) => s.page.$(`.badge-ref[data-name="${name}"] svg`).getAttribute('viewBox');
+    assert.equal(viewBox('origin/main'), '0 0 24 24', 'the logo');
+    assert.equal(viewBox('other/main'), '0 0 16 16', 'the cloud');
+    assert.deepEqual(s.page.errors, []);
+  });
+});
+
 describe('a commit', () => {
   test('shows its changed files and its message when clicked', async () => {
     await repoWithEverything();

@@ -22,7 +22,7 @@
   // The commit list's and sidebar's state: data packet, selection, filters, groups, loading more, shared with the tests (media/nav.js)
   const { createNav, WORKTREE } = /** @type {any} */ (window).BonsaiNav;
   // Icons as inline SVG, shared with the tests (media/icons.js)
-  const { ICONS } = /** @type {any} */ (window).BonsaiIcons;
+  const { ICONS, PROVIDERS } = /** @type {any} */ (window).BonsaiIcons;
   // HTML of a diff: hunks, marks, whitespace signs, shared with the tests (media/diffhtml.js)
   const { createDiffBody, esc } = /** @type {any} */ (window).BonsaiDiffHtml;
   // Changed pictures: side by side, swipe, onion skin (media/imagediff.js)
@@ -257,8 +257,15 @@
   }
 
   /** A local branch whose remote branch was deleted: its upstream is still configured, but points at nothing. */
+  /** The mark of the service a remote branch lives on, if its host is a known one. */
+  function providerIcon(/** @type {any} */ r) {
+    if (r.kind !== 'remote') return undefined;
+    const providers = nav.data.providers ?? {};
+    const remote = Object.keys(providers).find(n => r.name.startsWith(`${n}/`));
+    return remote === undefined ? undefined : PROVIDERS[providers[remote]];
+  }
   const refIcon = (/** @type {any} */ r, /** @type {boolean} */ cur) =>
-    r.gone ? `<span class="gone" title="${esc(t('goneTip', r.upstream))}">${icon(r.kind, cur)}${ICONS.goneTri}</span>` : icon(r.kind, cur);
+    r.gone ? `<span class="gone" title="${esc(t('goneTip', r.upstream))}">${icon(r.kind, cur)}${ICONS.goneTri}</span>` : providerIcon(r) ?? icon(r.kind, cur);
 
   /** Branches can be dragged onto each other (see the end of this file); tags and stashes cannot. */
   const draggable = (/** @type {string} */ kind) => (kind === 'head' || kind === 'remote' ? 'draggable="true"' : '');

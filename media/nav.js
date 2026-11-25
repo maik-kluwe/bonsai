@@ -15,7 +15,7 @@
    *   of the open and closed groups, save keeps it again
    */
   function createNav({ post, pane, saved = {}, save }) {
-    /** @type {{commits: any[], more?: boolean, rows: any[], refs: any[], maxWidth: number, head?: string, currentBranch?: string, staged: any[], unstaged: any[], changeCount?: number, avatars?: Record<string, string>, merge?: {theirs: string, hash: string, message: string, conflicts: number}}} */
+    /** @type {{commits: any[], more?: boolean, rows: any[], refs: any[], maxWidth: number, head?: string, currentBranch?: string, staged: any[], unstaged: any[], changeCount?: number, avatars?: Record<string, string>, merge?: {theirs: string, hash: string, message: string, conflicts: number}, remotes?: string[], providers?: Record<string, string>}} */
     let data = { commits: [], more: false, rows: [], refs: [], maxWidth: 0, staged: [], unstaged: [] };
     /** @type {Map<string, any[]>} */
     let refsByHash = new Map();

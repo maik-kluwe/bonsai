@@ -84,7 +84,7 @@ const UNMERGED = new Set(['DD', 'AU', 'UD', 'UA', 'DU', 'AA', 'UU']);
  */
 export class FakeRepo {
   readonly rootUri: { fsPath: string };
-  state = { HEAD: undefined as { name?: string; upstream?: unknown } | undefined, remotes: [] as { name: string }[],
+  state = { HEAD: undefined as { name?: string; upstream?: unknown } | undefined, remotes: [] as { name: string; fetchUrl?: string }[],
     indexChanges: [] as Change[], workingTreeChanges: [] as Change[], mergeChanges: [] as Change[], untrackedChanges: [] as Change[] };
 
   constructor(private readonly t: TestRepo) {

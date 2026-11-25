@@ -1,3 +1,4 @@
+import { providersOf } from './providers';
 import { Status, type Change, type Repository } from './git';
 import { parseDiff } from './diff';
 import { findChange } from './flows';
@@ -32,7 +33,7 @@ export async function readSnapshot(svc: GitService, repo: Repository, limit: num
   const unstaged = changeItems(root, [...s.mergeChanges, ...s.workingTreeChanges, ...s.untrackedChanges]);
   return buildSnapshot({
     commits, more: commits.length >= limit, refs, head, currentBranch: s.HEAD?.name, staged, unstaged,
-    merge: mergeInfo(merge, s.mergeChanges.length, t('incomingSide')), remotes: s.remotes.map(r => r.name),
+    merge: mergeInfo(merge, s.mergeChanges.length, t('incomingSide')), remotes: s.remotes.map(r => r.name), providers: providersOf(s.remotes),
     worktreeSubject: n => t('worktreeRow', n), now: Date.now() / 1000,
   });
 }
