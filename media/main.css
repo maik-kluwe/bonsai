@@ -398,7 +398,7 @@ svg .dot.clamped { fill: var(--vscode-editor-background); stroke: currentColor; 
 .cout { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin: 0 12px 8px; }
 .cout summary { cursor: pointer; color: var(--muted); padding: 2px 0; }
 .cout .poutput { margin: 4px 0 0; max-height: 35vh; }
-.phint { flex: none; margin: 0 12px 8px; padding: 4px 8px; border-left: 3px solid var(--border); color: var(--muted); }
+.phint { flex: none; margin: 0 12px 8px; padding: 4px 8px; overflow-wrap: anywhere; border-left: 3px solid var(--border); color: var(--muted); }
 .phint[hidden] { display: none; }
 .phint.warn { border-left-color: var(--vscode-editorWarning-foreground, #cca700); color: var(--vscode-foreground); }
 .pform select:disabled { opacity: 0.5; }
