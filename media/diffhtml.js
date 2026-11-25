@@ -9,6 +9,15 @@
    *   t translates a text key; lineSel holds the marked lines (media/linesel.js); images draws a changed picture (media/imagediff.js)
    */
   function createDiffBody({ t, lineSel, images }) {
+  /** The buttons for the marked lines of hunk `i`; none without marks. */
+  function lineButtons(/** @type {number} */ i, /** @type {'stage' | 'unstage' | null} */ pickLines) {
+    const n = lineSel.count(i);
+    if (!pickLines || !n) return '';
+    return pickLines === 'stage'
+      ? `<button data-lines="stage">${t('stageLines', n)}</button><button data-lines="discard">${t('discardLines', n)}</button>`
+      : `<button data-lines="unstage">${t('unstageLines', n)}</button>`;
+  }
+
   /**
    * Hunks as a table; hunkBtns = buttons in the hunk header (empty for a read-only view). With `pickLines` the changed
    * lines can be marked, and a hunk with marked lines gets buttons for just those lines.
@@ -23,23 +32,16 @@
       const eol = look?.eol && !noEol ? `<span class="ws">${cr ? '␍' : ''}¶</span>` : '';
       return shown + eol || ' ';
     };
-    const lineBtns = (/** @type {number} */ i) => {
-      const n = lineSel.count(i);
-      if (!pickLines || !n) return '';
-      return pickLines === 'stage'
-        ? `<button data-lines="stage">${t('stageLines', n)}</button><button data-lines="discard">${t('discardLines', n)}</button>`
-        : `<button data-lines="unstage">${t('unstageLines', n)}</button>`;
-    };
     if (m.missing) return `<div class="dmsg">${t('diffMissing')}</div>`;
     if (m.binary) return (m.images && images?.html(m.images)) || `<div class="dmsg">${t('diffBinary')}</div>`;
     if (!m.hunks.length) return `<div class="dmsg">${t('diffEmpty')}</div>`;
     return m.hunks.map((h, i) => `<div class="hunk" data-i="${i}">
-      <div class="hhead"><span class="hh">${esc(h.header)}</span><span class="grow"></span>${lineBtns(i)}${hunkBtns}</div>
+      <div class="hhead"><span class="hh">${esc(h.header)}</span><span class="grow"></span>${lineButtons(i, pickLines)}${hunkBtns}</div>
       <table>${h.lines.map((l, li) => `<tr class="l l${l.t === '+' ? 'add' : l.t === '-' ? 'del' : l.t === '\\' ? 'meta' : 'ctx'}${pickLines && (l.t === '+' || l.t === '-') ? ` pick${lineSel.has(i, li) ? ' sel' : ''}` : ''}"${pickLines && (l.t === '+' || l.t === '-') ? ` data-l="${li}"` : ''}><td class="ln">${l.o ?? ''}</td><td class="ln">${l.n ?? ''}</td><td class="sg">${l.t === '\\' ? '' : esc(l.t)}</td><td class="tx">${code(l.text, h.lines[li + 1]?.t === '\\')}</td></tr>`).join('')}</table>
     </div>`).join('');
   }
 
-    return diffBody;
+    return Object.assign(diffBody, { lineButtons });
   }
 
   const api = { createDiffBody, esc };

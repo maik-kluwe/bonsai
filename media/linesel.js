@@ -5,7 +5,7 @@
    * The selection lives in one hunk at a time: marking a line elsewhere starts over there, because the host
    * builds one patch per hunk.
    * Plain click marks one line (and unmarks it again when it is the only one), Ctrl/Cmd toggles, Shift marks
-   * the changed lines between the last click and this one.
+   * the changed lines between the last click and this one. Dragging over lines marks them all (`set`).
    */
   function createLineSelection() {
     let hunk = -1;
@@ -32,6 +32,10 @@
           anchor = line;
         }
         if (!marked.size) { hunk = -1; anchor = -1; }
+      },
+      /** Marks exactly `lines` (not empty) of hunk `h`; Shift+click extends from the first of them. */
+      set(/** @type {number} */ h, /** @type {number[]} */ lines) {
+        hunk = h; marked = new Set(lines); anchor = lines[0];
       },
       has: (/** @type {number} */ h, /** @type {number} */ line) => h === hunk && marked.has(line),
       count: (/** @type {number} */ h) => (h === hunk ? marked.size : 0),

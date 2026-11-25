@@ -35,7 +35,7 @@
    * @param {{
    *   post: (m: any) => void,
    *   look: { asked(): number, accepts(a: any, checkWhitespace: boolean): boolean, change(which?: string): { reload: boolean } },
-   *   lineSel: { clear(): void, lines(): number[], click(h: number, line: number, mods: any, selectable: number[]): void },
+   *   lineSel: { clear(): void, lines(): number[], set(h: number, lines: number[]): void, click(h: number, line: number, mods: any, selectable: number[]): void },
    * }} deps  post sends a message to the host; look is the diff toolbar's look (media/look.js); lineSel the marked lines (media/linesel.js)
    */
   function createLocalDiff({ post, look, lineSel }) {
@@ -107,6 +107,9 @@
         const selectable = shown.hunks[hunk].lines.flatMap((/** @type {any} */ l, /** @type {number} */ i) => (l.t === '+' || l.t === '-' ? [i] : []));
         lineSel.click(hunk, line, mods, selectable);
       },
+
+      /** The mouse was dragged over changed lines of a hunk: exactly those are marked. */
+      markAll(/** @type {number} */ hunk, /** @type {number[]} */ lines) { lineSel.set(hunk, lines); },
 
       /**
        * A button of the diff header. Returns 'merge' for the one that opens the merge dialog, which this module does not

@@ -120,6 +120,32 @@ describe('single lines', () => {
     assert.doesNotMatch(cached(), /changed four/, 'the neighbour is not staged');
     assert.match(worktree(), /\+changed four/);
   });
+
+  test('dragging over lines marks all of them, and the selected text stays for copying', async () => {
+    await localChanges();
+    await s.click('#unstaged li');
+    const row = (text: RegExp) => {
+      const found = [...s.page.document.querySelectorAll<HTMLElement>('#diff .hunk[data-i="0"] tr.pick')].find(r => text.test(r.textContent ?? ''));
+      assert.ok(found, String(text));
+      return `#diff .hunk[data-i="0"] tr.pick[data-l="${found.dataset.l}"] .tx`;
+    };
+    const marked = () => [...s.page.document.querySelectorAll('#diff tr.sel .tx')].map(c => c.textContent);
+
+    const numbers = (text: RegExp) => row(text).replace(/\.tx$/, '.ln');
+    s.page.dragSelect(numbers(/changed four/), numbers(/changed three/));
+    assert.deepEqual(marked(), ['changed three', 'changed four'], 'upwards and on the line numbers, too');
+
+    s.page.dragSelect(row(/changed three/), '#diff .hunk[data-i="0"] .hhead');
+    assert.ok(marked().length >= 2, 'let go outside the table: up to its end');
+
+    s.page.dragSelect(row(/changed three/), row(/changed four/));
+    assert.deepEqual(marked(), ['changed three', 'changed four']);
+    assert.match(s.page.document.getSelection()!.toString(), /changed three/);
+    await s.click('#diff .hunk[data-i="0"] [data-lines="stage"]');
+    assert.match(cached(), /\+changed three/);
+    assert.match(cached(), /\+changed four/);
+    assert.doesNotMatch(cached(), /changed twentysix/);
+  });
 });
 
 describe('committing', () => {

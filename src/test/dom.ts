@@ -70,6 +70,22 @@ export class WebviewPage {
     return el;
   }
 
+  /**
+   * Drags the mouse from one element to another: the text between them is selected as a browser would, then the button
+   * is let go over the second.
+   */
+  dragSelect(from: string, to: string): void {
+    const { window } = this.dom, a = this.$(from), b = this.$(to);
+    a.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }));
+    const range = window.document.createRange();
+    range.setStart(a, 0);
+    range.setEnd(b, b.childNodes.length);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    b.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true, clientX: 200, clientY: 60 }));
+  }
+
   /** A click; `init.detail: 2` is the second click of a double click. */
   click(selector: string, init: MouseEventInit = {}): void {
     if (!Object.keys(init).length) { this.$(selector).click(); return; }

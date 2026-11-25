@@ -958,14 +958,59 @@
       redrawDiff(); // the marks are gone
       return;
     }
-    // Mark changed lines; a drag that selected text is not a click on a line
+    // Mark changed lines. A drag has marked its own lines already, and the second click of a double click that selected a
+    // word must not unmark the line again
     const row = closest(el, 'tr[data-l]');
     const e2 = /** @type {MouseEvent} */ (e);
-    if (row && hunk && !(window.getSelection()?.toString() && !e2.shiftKey && !e2.ctrlKey && !e2.metaKey)) {
+    const word = e2.detail > 1 && window.getSelection()?.toString() && !e2.shiftKey && !e2.ctrlKey && !e2.metaKey;
+    if (row && hunk && !linesDragged && !word) {
       local.mark(Number(hunk.dataset.i), Number(row.dataset.l), e2);
       redrawDiff();
     }
   });
+
+  // Dragging over lines marks them, too: from the row the button went down on to the one it is let go over. The rows
+  // count, not the selected text, so that it also works on the line numbers. Where the drag started decides the hunk,
+  // because one patch holds one hunk.
+  let dragFrom = /** @type {{ row: Element, x: number, y: number } | null} */ (null);
+  /** The button just let go ended a drag, not a click. */
+  let linesDragged = false;
+  diffEl.addEventListener('mousedown', e => {
+    const row = closest(/** @type {HTMLElement} */ (e.target), '.dbody tr');
+    dragFrom = row && e.button === 0 ? { row, x: e.clientX, y: e.clientY } : null;
+    linesDragged = false;
+  });
+  window.addEventListener('mouseup', e => {
+    const from = dragFrom;
+    dragFrom = null;
+    // A click that did not move is the business of the click handler above
+    if (!from || Math.hypot(e.clientX - from.x, e.clientY - from.y) < 4) return;
+    linesDragged = true;
+    const hunk = /** @type {HTMLElement | null} */ (from.row.closest('.hunk'));
+    const table = from.row.closest('table');
+    if (!local.shown || !from.row.isConnected || !hunk || !table) return;
+    const rows = [...table.querySelectorAll('tr')];
+    // Let go outside the table: up to its end, on the side the pointer left it
+    const over = e.target instanceof Element ? e.target.closest('tr') : null;
+    const to = over && table.contains(over) ? over : rows[e.clientY < table.getBoundingClientRect().top ? 0 : rows.length - 1];
+    const a = rows.indexOf(/** @type {HTMLTableRowElement} */ (from.row)), b = rows.indexOf(/** @type {HTMLTableRowElement} */ (to));
+    const touched = rows.slice(Math.min(a, b), Math.max(a, b) + 1)
+      .filter(tr => tr.classList.contains('pick')).map(tr => Number(tr.dataset.l));
+    if (!touched.length) return;
+    local.markAll(Number(hunk.dataset.i), touched);
+    showMarks();
+  });
+
+  /** Shows the marked lines and their buttons without drawing the diff again, so that the selected text can be copied. */
+  function showMarks() {
+    const pickLines = lineAction(local.shown, statusOf(local.shown));
+    for (const hunk of /** @type {NodeListOf<HTMLElement>} */ (diffEl.querySelectorAll('.hunk'))) {
+      const i = Number(hunk.dataset.i);
+      for (const tr of /** @type {NodeListOf<HTMLElement>} */ (hunk.querySelectorAll('tr.pick'))) tr.classList.toggle('sel', lineSel.has(i, Number(tr.dataset.l)));
+      hunk.querySelectorAll('button[data-lines]').forEach(b => b.remove());
+      hunk.querySelector('.hhead .grow')?.insertAdjacentHTML('afterend', diffBody.lineButtons(i, pickLines));
+    }
+  }
 
   diffEl.addEventListener('change', e => {
     const el = /** @type {HTMLInputElement} */ (e.target);
