@@ -67,6 +67,47 @@ describe('a name', () => {
   });
 });
 
+describe('a double click on a button that closes its window', () => {
+  /** The events of a double click whose second click finds something else under the pointer: the window is gone by then. */
+  async function doubleClick(first: string, second: string) {
+    const press = async (selector: string, detail: number, types: string[]) => {
+      const el = s.page.$(selector);
+      for (const type of types) el.dispatchEvent(new s.page.dom.window.MouseEvent(type, { bubbles: true, detail }));
+      await s.settle();
+    };
+    await press(first, 1, ['mousedown', 'mouseup', 'click']);
+    await press(second, 2, ['mousedown', 'mouseup', 'click', 'dblclick']);
+  }
+
+  test('does not reach what lay under it; a double click on the row itself still checks out', async () => {
+    await repo();
+    const cancel = '#askdlg .mfoot [data-askact="close"]';
+    for (const under of [rowOf('base'), '#refs .ref[data-name="old"]']) {
+      await s.click('[data-action="branch"]');
+      await doubleClick(cancel, under);
+      assert.equal(dlg().hidden, true);
+      assert.equal(git('branch', '--show-current'), 'main', under);
+    }
+    await doubleClick(rowOf('base'), rowOf('base'));
+    assert.equal(git('branch', '--show-current'), 'old');
+  });
+
+  test('nor does one on a menu entry stage the file under it', async () => {
+    await repo();
+    s.h.t.write('new.txt', 'new\n');
+    await s.h.repo.status();
+    await s.click('#refresh');
+    await s.click('.nav-item[data-view="changes"]');
+    const file = '#unstaged .file';
+    s.page.$(rowOf('base')).dispatchEvent(new s.page.dom.window.MouseEvent('contextmenu', { bubbles: true }));
+    const copy = [...s.page.document.querySelectorAll<HTMLElement>('#menu .mi')].find(e => /copy/i.test(e.textContent!))!;
+    await doubleClick(`#menu .mi[data-i="${copy.dataset.i}"]`, file);
+    assert.equal(git('status', '--porcelain'), '?? new.txt');
+    await doubleClick(file, file);
+    assert.equal(git('status', '--porcelain'), 'A  new.txt');
+  });
+});
+
 describe('a choice from a list, then a warning', () => {
   test('reset asks for the mode, and "hard" asks again before work is lost', async () => {
     await repo();

@@ -16,6 +16,7 @@
 - Two initials fit into the avatar circle.
 - The counters at Local Changes, Pull and Push are readable in every theme.
 - All buttons at the bottom of a window are the same size.
+- A double-click on a button that closes a window or menu no longer checks out or stages what lies under it.
 
 ## 0.5.0 - 2026-11-21
 

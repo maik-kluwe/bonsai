@@ -136,6 +136,8 @@ A branch created from the toolbar or a context menu is marked in the sidebar as 
 
 **Questions of the flows** (names, choices, confirmations) are asked in the view, not in VS Code's boxes: `Prompts` (`src/prompts.ts`) implements those methods of `Ui`, posts `ask` and waits for `answer`; `media/askdialog.js` draws the four kinds. One question is open at a time. Another question, a page that loads anew (`ready`) or a closed panel counts as cancelled, so no flow waits forever. A list of nine or more entries gets a filter field. The interactive rebase window, the save dialog and messages that are not questions stay with VS Code.
 
+**Double clicks after a window:** the first click of a double click may close a window or the menu, and the second then lands on a row or file underneath. `media/main.js` swallows that second click before the lists see it (they tell a double click by `e.detail` alone).
+
 **Service logos:** the host derives a key from each remote's host name (`src/providers.ts`) and sends only that, never the address, which may carry a token. The marks are the paths of Simple Icons (CC0) in `media/icons.js`.
 
 ### Stashes and details

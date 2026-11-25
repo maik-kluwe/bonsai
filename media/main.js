@@ -256,7 +256,6 @@
     return html;
   }
 
-  /** A local branch whose remote branch was deleted: its upstream is still configured, but points at nothing. */
   /** The mark of the service a remote branch lives on, if its host is a known one. */
   function providerIcon(/** @type {any} */ r) {
     if (r.kind !== 'remote') return undefined;
@@ -264,6 +263,7 @@
     const remote = Object.keys(providers).find(n => r.name.startsWith(`${n}/`));
     return remote === undefined ? undefined : PROVIDERS[providers[remote]];
   }
+  /** A local branch whose remote branch was deleted (its upstream points at nothing) is marked as such. */
   const refIcon = (/** @type {any} */ r, /** @type {boolean} */ cur) =>
     r.gone ? `<span class="gone" title="${esc(t('goneTip', r.upstream))}">${icon(r.kind, cur)}${ICONS.goneTri}</span>` : providerIcon(r) ?? icon(r.kind, cur);
 
@@ -1425,6 +1425,19 @@
     };
   }
   window.addEventListener('mousedown', e => { if (!menu.contains(/** @type {Node} */ (e.target))) menu.hidden = true; });
+
+  // A double click on a button that closes its window or menu: the second click lands on what lay under it, and must not
+  // check out or stage anything there. Caught before anyone sees it, as the lists tell a double click by e.detail alone.
+  const inOverlay = (/** @type {EventTarget | null} */ el) => !!closest(/** @type {HTMLElement} */ (el), '[id$="dlg"], #menu');
+  let begunInOverlay = false;
+  const strayClick = (/** @type {MouseEvent} */ e) => e.detail > 1 && begunInOverlay && !inOverlay(e.target);
+  window.addEventListener('mousedown', e => {
+    if (e.detail <= 1) begunInOverlay = inOverlay(e.target);
+    else if (strayClick(e)) e.preventDefault(); // would mark the word under the pointer
+  }, true);
+  for (const type of /** @type {const} */ (['click', 'dblclick'])) {
+    window.addEventListener(type, e => { if (strayClick(e)) e.stopPropagation(); }, true);
+  }
   window.addEventListener('blur', () => { menu.hidden = true; });
   window.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
