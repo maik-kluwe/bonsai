@@ -1,7 +1,7 @@
 import { describe, test } from 'node:test';
 import { strict as assert } from 'assert';
 import * as path from 'path';
-import { isInside, repoRelative, sameRepo } from '../paths';
+import { isInside, preferredRepo, repoRelative, sameRepo } from '../paths';
 
 describe('repoRelative', () => {
   test('Windows and POSIX: "/" as separator, umlauts and spaces stay, case of drive and folders does not matter', () => {
@@ -31,6 +31,27 @@ describe('isInside', () => {
       ['C:\\r', 'D:\\other\\x.txt', path.win32, false],
     ];
     for (const [root, file, flavour, inside] of cases) assert.equal(isInside(root, file, flavour), inside, file);
+  });
+});
+
+describe('preferredRepo', () => {
+  test('the open file decides, then the first workspace folder with a repository; otherwise there is no preference', () => {
+    const roots = ['/w/second', '/w/app', '/w/app/lib'];
+    const cases: [string | undefined, string[], string | undefined, string][] = [
+      ['/w/app/src/x.ts', ['/w/second'], '/w/app', 'file wins over the folder'],
+      ['/w/app/lib/y.ts', [], '/w/app/lib', 'the innermost repository'],
+      ['/elsewhere/z.ts', ['/w/app', '/w/second'], '/w/app', 'a file outside every repository counts as none'],
+      [undefined, ['/w/second', '/w/app'], '/w/second', 'order of the folders, not of the repositories'],
+      [undefined, ['/nothing', '/w/app/src'], '/w/app', 'a folder inside a repository'],
+      [undefined, ['/w'], '/w/second', 'a folder holding repositories: the first of them'],
+      [undefined, ['/nothing'], undefined, 'no preference'],
+      [undefined, [], undefined, 'no folder'],
+    ];
+    for (const [file, folders, want, why] of cases) assert.equal(preferredRepo(roots, file, folders, path.posix), want, why);
+  });
+
+  test('Windows: the case of drive and folders does not matter', () => {
+    assert.equal(preferredRepo(['c:\\w\\App'], 'C:\\W\\app\\a.txt', [], path.win32), 'c:\\w\\App');
   });
 });
 

@@ -4,7 +4,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 import { Status, type API, type Change, type Repository } from './git';
 import { GitService, type CommitInfo, type MergeState, type RefInfo } from './gitService';
 import { parseDiff } from './diff';
-import { repoRelative, sameRepo } from './paths';
+import { preferredRepo, repoRelative, sameRepo } from './paths';
 import { isConflict, type ChangeItem } from './changes';
 import { changeItems, readLocalDiff } from './readSnapshot';
 import { avatarHashes } from './avatars';
@@ -46,6 +46,10 @@ export class BonsaiPanel implements vscode.Disposable {
   private stateListener: vscode.Disposable | undefined;
   private repo: Repository | undefined;
   private followScm = true;
+  /** The file that was open when Bonsai was opened; it says which repository to start with. */
+  private readonly startFile = vscode.window.activeTextEditor?.document.uri;
+  /** The selection in the Source Control view has changed since: from then on the shown repository stays. */
+  private followed = false;
   private refreshTimer: NodeJS.Timeout | undefined;
   /** Log cache: only reload when refs/HEAD changed (status events fire on every save). */
   private logCache: LoadedLog | undefined;
@@ -88,15 +92,28 @@ export class BonsaiPanel implements vscode.Disposable {
 
   // ---------- Repository selection ----------
 
-  /** Follows the selection in the Source Control view as long as the user has not chosen manually. */
+  /** The repository of the open file or the workspace, else the one selected in Source Control, else the first. */
+  private startRepo(repos: Repository[]): Repository | undefined {
+    const root = preferredRepo(
+      repos.map(r => r.rootUri.fsPath),
+      this.startFile?.scheme === 'file' ? this.startFile.fsPath : undefined,
+      (vscode.workspace.workspaceFolders ?? []).map(f => f.uri.fsPath),
+    );
+    return repos.find(r => r.rootUri.fsPath === root) ?? repos.find(r => r.ui.selected) ?? repos[0];
+  }
+
+  /**
+   * Starts with startRepo and chooses again while repositories are still being opened. A change of the selection in the
+   * Source Control view is followed as long as the user has not chosen manually.
+   */
   private pickRepo(explicitRoot?: string) {
     const repos = this.git.repositories;
     let next: Repository | undefined;
     if (explicitRoot) {
       next = repos.find(r => r.rootUri.fsPath === explicitRoot);
       this.followScm = false;
-    } else if (this.followScm || !this.repo || !repos.some(r => sameRepo(r, this.repo))) {
-      next = repos.find(r => r.ui.selected) ?? repos[0];
+    } else if ((this.followScm && !this.followed) || !this.repo || !repos.some(r => sameRepo(r, this.repo))) {
+      next = this.startRepo(repos);
     } else {
       // The same repository, as the extension hands it out now (the stored object may be an older handle)
       next = repos.find(r => sameRepo(r, this.repo));
@@ -104,7 +121,10 @@ export class BonsaiPanel implements vscode.Disposable {
 
     this.repoListeners.forEach(d => d.dispose());
     this.repoListeners = repos.map(r => r.ui.onDidChange(() => {
-      if (this.followScm && r.ui.selected && !sameRepo(r, this.repo)) this.setRepo(r);
+      if (this.followScm && r.ui.selected && !sameRepo(r, this.repo)) {
+        this.followed = true;
+        this.setRepo(r);
+      }
     }));
 
     this.setRepo(next);
