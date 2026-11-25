@@ -3,9 +3,12 @@
 ## Unreleased
 
 ### Added
+- Checking out with local changes asks what to do with them: leave them, stash and reapply, or discard. It says beforehand whether Git would refuse or conflict.
+- Remote branches carry the logo of GitHub, GitLab, Bitbucket, Gitea or Codeberg.
 - Dragging over lines of a diff marks them for "Stage lines", "Discard lines" and "Unstage lines".
 
 ### Changed
+- Questions (names, choices, confirmations, apply stash) are asked in Bonsai's own windows instead of VS Code's boxes.
 - With several repositories, Bonsai starts with the one of the open file, else the one of the first workspace folder.
 
 ### Fixed

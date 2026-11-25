@@ -17,6 +17,8 @@ With several repositories in the workspace, Bonsai starts with the one of the fi
 
 The graph shows every branch, remote branch, tag and stash in one view. Click a commit to see its changed files and diffs; the arrow at the right of the tabs folds that pane down to its tab row and back. Type in the filter box to find a commit by its message, author or hash: older commits load as you search, and Enter jumps to the next match.
 
+A remote branch carries the logo of its service (GitHub, GitLab, Bitbucket, Gitea or Codeberg, told by the host name), or a cloud.
+
 The sidebar lists branches, remotes, tags and stashes as folders, so `feature/login` sits inside `feature`. Right-click almost anything for what you can do with it.
 
 ### Stage exactly what you want
@@ -38,6 +40,7 @@ Before you start a merge, cherry-pick or revert, Bonsai does a dry run and names
 - **Interactive rebase:** pick, reword, squash, fix up, drop or reorder commits in a dialog. Git never opens an editor.
 - **Rebase, merge, cherry-pick, revert and reset** from the context menu of a commit or branch.
 - **Double-click a commit** that has a branch on it to check that branch out.
+- **Check out with local changes:** Bonsai asks first: leave them as they are, stash and reapply them, or discard them. It says beforehand whether Git would refuse or the changes would conflict.
 - **Drag a branch** onto another one to merge or rebase. This works when one of the two is the current branch.
 - **Stashes:** save, apply, rename and delete them, and look inside before applying. To put away only some files, select them in Local Changes and right-click.
 
