@@ -15,6 +15,7 @@ import { READ_ONLY_TYPES, handleRepoMessage, type MessageCtx } from './messages'
 import { changeView, commitDiffRefs, compareRefs, type DiffSide } from './diffTargets';
 import { apiErrorMessage } from './operations';
 import { pageHtml } from './pageHtml';
+import { Prompts } from './prompts';
 import { findChange } from './flows';
 import { vscodeUi } from './ui';
 import { t } from './i18n';
@@ -46,6 +47,8 @@ export class BonsaiPanel implements vscode.Disposable {
   private stateListener: vscode.Disposable | undefined;
   private repo: Repository | undefined;
   private followScm = true;
+  /** The open question of an action, asked in the view. */
+  private readonly prompts = new Prompts(m => this.post(m));
   /** The file that was open when Bonsai was opened; it says which repository to start with. */
   private readonly startFile = vscode.window.activeTextEditor?.document.uri;
   /** The selection in the Source Control view has changed since: from then on the shown repository stays. */
@@ -275,9 +278,11 @@ export class BonsaiPanel implements vscode.Disposable {
     try {
       switch (m.type) {
         case 'ready':
+          this.prompts.cancel(); // the page is new: whatever it was asked is gone
           this.post({ type: 'look', look: this.ctx.globalState.get(LOOK_KEY) === undefined ? undefined : sanitizeLook(this.ctx.globalState.get(LOOK_KEY)) });
           this.pickRepo();
           return;
+        case 'answer': this.prompts.answer(m.id, m.value); return;
         case 'saveLook': await this.ctx.globalState.update(LOOK_KEY, sanitizeLook(m.look)); return;
         case 'activity': this.post({ type: 'activity', entries: BonsaiPanel.activity.entries }); return;
         case 'refresh': this.logCache = undefined; this.lastSig = undefined; await this.repo?.status(); this.refresh(); return;
@@ -314,7 +319,7 @@ export class BonsaiPanel implements vscode.Disposable {
         // Every other type acts on the repository: messages.ts. The type checker leaves exactly those here.
         default: {
           const c: MessageCtx = {
-            ui: { ...vscodeUi, conflicts: async (output, files) => this.post({ type: 'conflicts', files, output }) },
+            ui: { ...vscodeUi, ...this.prompts.ui, conflicts: async (output, files) => this.post({ type: 'conflicts', files, output }) },
             svc: this.service()!, repo,
             api: call => this.api(call), progress: (title, fn) => this.withProgress(title, fn), post: msg => this.post(msg),
             memory: { get: key => this.ctx.globalState.get(key), set: (key, value) => Promise.resolve(this.ctx.globalState.update(key, value)) },
@@ -386,6 +391,7 @@ export class BonsaiPanel implements vscode.Disposable {
   }
 
   dispose() {
+    this.prompts.cancel();
     BonsaiPanel.current = undefined;
     clearTimeout(this.refreshTimer);
     this.stateListener?.dispose();

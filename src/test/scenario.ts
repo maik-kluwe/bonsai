@@ -7,6 +7,7 @@ import * as path from 'path';
 import type { FetchOptions, Repository } from '../git';
 import { handleRepoMessage, isRepoMessage, READ_ONLY_TYPES } from '../messages';
 import { readLocalDiff, readSnapshot } from '../readSnapshot';
+import { Prompts } from '../prompts';
 import type { ToHost, ToWebview } from '../protocol';
 import { WebviewPage } from './dom';
 import { FlowHarness } from './flowHarness';
@@ -33,16 +34,27 @@ export class Scenario {
   limit: number;
   private readonly step: number;
 
-  constructor(opts: { logLimit?: number } = {}) {
+  /** The questions the view is asked in its own windows (`dialogs: true`); otherwise `h.ui` answers from a script. */
+  private readonly prompts = new Prompts(m => { this.send(m); this.asked(); });
+  private asked: () => void = () => {};
+
+  constructor(opts: { logLimit?: number; dialogs?: boolean } = {}) {
+    if (opts.dialogs) Object.assign(this.h.ui, this.prompts.ui);
     this.limit = this.step = opts.logLimit ?? 1000;
     this.h.trace = (args, stdout, stderr, ok) => {
       if (!isWriteCommand(args)) return;
       this.current.getStore()?.commands.push({ command: formatCommand(args), output: [stdout, stderr].filter(x => x.trim()).join('\n'), ok });
     };
-    this.page = new WebviewPage(m => this.pending.push(this.receive(m)));
+    this.page = new WebviewPage(m => this.post(m));
     // A conflict dialog reaches the view as a message, as in the panel
     const conflicts = this.h.ui.conflicts.bind(this.h.ui);
     this.h.ui.conflicts = async (output, files) => { await conflicts(output, files); this.page.send({ type: 'conflicts', files, output }); };
+  }
+
+  /** A message of the view. An answer goes straight to the question that waits, so that `settle` sees what follows. */
+  private post(m: ToHost): void {
+    if (m.type === 'answer') this.prompts.answer(m.id, m.value);
+    else this.pending.push(this.receive(m));
   }
 
   private send(m: ToWebview) { this.h.posted.push(m); this.page.send(m); }
@@ -89,9 +101,15 @@ export class Scenario {
     }
   }
 
-  /** Wait until the host has answered everything the view posted, and what that set off in turn. */
+  /**
+   * Wait until the host has answered everything the view posted, and what that set off in turn, or until it waits for
+   * the user to answer a question.
+   */
   async settle(): Promise<void> {
-    while (this.pending.length) await this.pending.shift();
+    while (this.pending.length && !this.prompts.open) {
+      const asked = new Promise<boolean>(resolve => { this.asked = () => resolve(false); });
+      if (await Promise.race([this.pending[0].then(() => true), asked])) this.pending.shift();
+    }
   }
 
   /** The view has started (it asks for its data on its own) and the host has answered. */
@@ -107,7 +125,8 @@ export class Scenario {
   async reload(): Promise<this> {
     const state = this.page.state;
     this.page.dom.window.close();
-    this.page = new WebviewPage(m => this.pending.push(this.receive(m)), 'main', state);
+    this.prompts.cancel(); // as the panel does when the new page says `ready`
+    this.page = new WebviewPage(m => this.post(m), 'main', state);
     return this.open();
   }
 

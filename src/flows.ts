@@ -82,6 +82,7 @@ export async function runMerge(c: FlowCtx, ref: string): Promise<void> {
     })),
     {
       title: t('mergeTitle', shown(ref), c.repo.state.HEAD?.name ?? 'HEAD'),
+      action: t('mergeBtn'),
       placeHolder: placeholder(conflicts, offered.length < MERGE_OPTIONS.length ? ` (${t('squashOff')})` : ''),
     },
   );
@@ -100,7 +101,7 @@ export async function runCherryPick(c: FlowCtx, hash: string): Promise<void> {
     { id: 'commit', label: t('optCommit'), picked: true },
     { id: 'origin', label: t('optAppendOrigin'), detail: '-x', picked: false },
   ];
-  const picks = await c.ui.pickMany(items, { title: t('cherryTitle', shown(hash)), placeHolder: placeholder(conflicts) });
+  const picks = await c.ui.pickMany(items, { title: t('cherryTitle', shown(hash)), placeHolder: placeholder(conflicts), action: 'Cherry-pick' });
   if (!picks) return;
   const commit = picks.some(p => p.id === 'commit');
   if (unsupportedWithConflicts({ kind: 'cherryPick', commit }, conflicts)) {
@@ -138,7 +139,7 @@ export async function runReset(c: FlowCtx, hash: string): Promise<void> {
     RESET_MODES.map(mode => ({
       mode, label: t(RESET_TEXT[mode][0]), description: t(RESET_TEXT[mode][1]), detail: `--${mode}`,
     })),
-    { title: t('resetTitle', c.repo.state.HEAD?.name ?? 'HEAD', shown(hash)) },
+    { title: t('resetTitle', c.repo.state.HEAD?.name ?? 'HEAD', shown(hash)), action: 'Reset' },
   );
   if (!pick) return;
   if (pick.mode === 'hard') {
@@ -157,7 +158,7 @@ export async function runReset(c: FlowCtx, hash: string): Promise<void> {
 export async function runRebase(c: FlowCtx, ref: string): Promise<void> {
   const picks = await c.ui.pickMany(
     [{ id: 'autostash', label: t('optAutostash'), detail: '--autostash', picked: trackedChanges(c.repo).length > 0 }],
-    { title: t('rebaseTitle', c.repo.state.HEAD?.name ?? 'HEAD', shown(ref)) },
+    { title: t('rebaseTitle', c.repo.state.HEAD?.name ?? 'HEAD', shown(ref)), action: 'Rebase' },
   );
   if (!picks) return;
   await finish(c.ui, c.repo, await c.svc.rebase(ref, { autostash: picks.length > 0 }));
@@ -197,7 +198,7 @@ export async function runAbort(c: FlowCtx): Promise<void> {
 export async function runApplyStash(c: FlowCtx, index: number, name: string): Promise<void> {
   const picks = await c.ui.pickMany(
     [{ id: 'delete', label: t('optDeleteStash'), detail: t('optDeleteStashDetail'), picked: false }],
-    { title: t('applyStashTitle', stashLabel(name)) },
+    { title: t('applyStashTitle'), placeHolder: t('applyStashHint'), action: t('apply'), facts: [[t('stashToApply'), `stash@{${index}} ${stashLabel(name)}`]] },
   );
   if (!picks) return;
   const outcome = await c.svc.applyStash(index);

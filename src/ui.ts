@@ -9,9 +9,19 @@ export interface PickItem {
   picked?: boolean;
 }
 
+/** What a list is asked with. `action` and `facts` are shown by Bonsai's own window only. */
+export interface PickOptions {
+  title: string;
+  placeHolder?: string;
+  /** The text of the main button. */
+  action?: string;
+  /** Rows of name and value above the list. */
+  facts?: [string, string][];
+}
+
 /**
- * Everything the flows ask of the user. One adapter shows VS Code dialogs, another answers from a script in tests;
- * that is why the flows in flows.ts can run against a real Git repository without a window.
+ * Everything the flows ask of the user. The panel asks in windows of its own (prompts.ts), the windows without a view of
+ * theirs use VS Code dialogs, and the tests answer from a script; that is why the flows in flows.ts can run against a real Git repository without a window.
  */
 export interface Ui {
   /** Modal question with one way to say yes (the button text). */
@@ -23,8 +33,8 @@ export interface Ui {
   error(message: string): void;
   /** Text input; undefined if cancelled. */
   input(prompt: string, value?: string): Promise<string | undefined>;
-  pick<T extends PickItem>(items: T[], o: { title: string; placeHolder?: string }): Promise<T | undefined>;
-  pickMany<T extends PickItem>(items: T[], o: { title: string; placeHolder?: string }): Promise<T[] | undefined>;
+  pick<T extends PickItem>(items: T[], o: PickOptions): Promise<T | undefined>;
+  pickMany<T extends PickItem>(items: T[], o: PickOptions): Promise<T[] | undefined>;
   /** Save dialog starting at `defaultPath`; the chosen path, or undefined if cancelled. */
   saveFile(defaultPath: string): Promise<string | undefined>;
   /**

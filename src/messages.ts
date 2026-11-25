@@ -18,7 +18,7 @@ export interface MessageCtx extends FlowCtx {
  */
 export const VIEW_TYPES = [
   'ready', 'selectRepo', 'refresh', 'loadMore', 'saveLook', 'activity', 'copy', 'openDiff', 'openChange', 'openFile', 'loadDiff',
-  'mergeEditor', 'interactiveRebase', 'interactiveRebaseOnto', 'compareLocal', 'copyCommitInfo', 'openUrl',
+  'mergeEditor', 'interactiveRebase', 'interactiveRebaseOnto', 'compareLocal', 'copyCommitInfo', 'openUrl', 'answer',
 ] as const satisfies readonly ToHost['type'][];
 
 export type ViewType = typeof VIEW_TYPES[number];

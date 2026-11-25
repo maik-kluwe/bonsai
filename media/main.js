@@ -17,6 +17,7 @@
   const { createFetchDialog } = /** @type {any} */ (window).BonsaiFetchDialog;
   // The window for an operation that stopped on conflicts, shared with the tests (media/conflictdialog.js)
   const { createConflictDialog } = /** @type {any} */ (window).BonsaiConflictDialog;
+  const { createAskDialog } = /** @type {any} */ (window).BonsaiAskDialog;
   // The commit list's and sidebar's state: data packet, selection, filters, groups, loading more, shared with the tests (media/nav.js)
   const { createNav, WORKTREE } = /** @type {any} */ (window).BonsaiNav;
   // Icons as inline SVG, shared with the tests (media/icons.js)
@@ -130,6 +131,7 @@
       case 'pushResult': showPushResult(m.output); break;
       case 'pullInfo': openPullDlg(m.info); break;
       case 'conflicts': openConflictDlg(m); break;
+      case 'ask': openAskDlg(m.id, m.question); break;
       case 'branchCreated': newBranch = m.name; showNewBranch(); break;
       case 'fileDiff': onFileDiff(m); break;
       case 'mergeInputs': onMergeInputs(m); break;
@@ -1293,6 +1295,60 @@
     else if (act === 'close') closeConflictDlg();
   });
 
+  // ---------- Questions of the host ----------
+
+  const askDlg = $('#askdlg');
+  const askDialog = createAskDialog({ t, esc, post: /** @type {(m: any) => void} */ (m => vscode.postMessage(m)) });
+  const askEntries = () => /** @type {HTMLInputElement[]} */ ([...askDlg.querySelectorAll('.aitem input')]);
+
+  function openAskDlg(/** @type {number} */ id, /** @type {any} */ question) {
+    askDialog.open(id, question);
+    askDlg.innerHTML = askDialog.html();
+    askDlg.hidden = false;
+    const field = /** @type {HTMLInputElement | null} */ (askDlg.querySelector('#ainput, #afilter, .aitem input:checked, .aitem input, button.primary'));
+    field?.focus();
+    if (field?.id === 'ainput') field.select();
+  }
+  function closeAskDlg() {
+    askDlg.hidden = true;
+    askDlg.innerHTML = '';
+  }
+  function cancelAskDlg() {
+    askDialog.cancel();
+    closeAskDlg();
+  }
+  function submitAskDlg(button = 0) {
+    const text = /** @type {HTMLInputElement | null} */ (askDlg.querySelector('#ainput'))?.value;
+    const picked = askEntries().filter(i => i.checked).map(i => Number(i.dataset.i));
+    if (askDialog.submit({ button, text, picked })) closeAskDlg();
+  }
+  askDlg.addEventListener('click', e => {
+    const hit = closest(/** @type {HTMLElement} */ (e.target), '[data-askact]');
+    if (hit?.dataset.askact === 'ok') submitAskDlg(Number(hit.dataset.n));
+    else if (hit?.dataset.askact === 'close') cancelAskDlg();
+  });
+  // Enter in a field or on an entry presses the main button; a focused button does that on its own
+  askDlg.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && /** @type {HTMLElement} */ (e.target).tagName === 'INPUT') { e.preventDefault(); submitAskDlg(); }
+  });
+  // The filter of a long list; where one entry has to be chosen, the choice stays among the ones shown
+  askDlg.addEventListener('input', e => {
+    const filter = /** @type {HTMLInputElement} */ (e.target);
+    if (filter.id !== 'afilter') return;
+    const wanted = filter.value.trim().toLowerCase();
+    const entries = askEntries();
+    for (const input of entries) {
+      const label = /** @type {HTMLElement} */ (input.closest('.aitem'));
+      label.hidden = !label.textContent?.toLowerCase().includes(wanted);
+    }
+    if (askDialog.kind !== 'one') return;
+    const shown = entries.filter(i => !i.closest('.aitem')?.hasAttribute('hidden'));
+    if (!shown.some(i => i.checked)) {
+      for (const i of entries) i.checked = false;
+      if (shown[0]) shown[0].checked = true;
+    }
+  });
+
   // ---------- Context menu ----------
 
   /** Webview-local menu actions (items of the form { label, ui: { name, arg } }). */
@@ -1329,6 +1385,7 @@
   window.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (!menu.hidden) menu.hidden = true;
+    else if (askDialog.isOpen) cancelAskDlg();
     else if (stashDialog.isOpen) closeStashDlg();
     else if (!pushDlg.hidden) closePushDlg();
     else if (pullDialog.isOpen) closePullDlg();

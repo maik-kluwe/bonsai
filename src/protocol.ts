@@ -87,7 +87,21 @@ export type ToHost =
   | { type: 'lastMessage' }
   | { type: 'recentMessages' }
   /** The activity popup was opened and wants the log. */
-  | { type: 'activity' };
+  | { type: 'activity' }
+  /** What the user answered to the question `id` of an `ask`; without a value they cancelled. */
+  | { type: 'answer'; id: number; value?: Answer };
+
+/** The text of a field, or the indexes of the chosen buttons or entries. */
+export type Answer = string | number[];
+
+/** A question the view shows in a window of its own (`Ui` in ui.ts; the list kinds are its pick and pickMany). */
+export type Question =
+  | { kind: 'buttons'; message: string; buttons: string[]; detail?: string }
+  | { kind: 'input'; message: string; value?: string }
+  | {
+    kind: 'one' | 'many'; title: string; hint?: string; /** The text of the main button */ action?: string; /** Rows of name and value above the list */ facts?: [string, string][];
+    items: { label: string; description?: string; detail?: string; picked?: boolean }[];
+  };
 
 /** Parsed diff as the webview renders it. */
 export interface DiffPayload {
@@ -124,6 +138,8 @@ export type ToWebview =
   | { type: 'look'; look: LookState | undefined }
   /** The repository changed, the lists did not: a file on them may have, so the diff on screen is read again. */
   | { type: 'recheck' }
+  /** Shows a window with a question; answered with `answer`. */
+  | { type: 'ask'; id: number; question: Question }
   /** What the server said to a push (GitLab's link for a merge request). */
   | { type: 'pushResult'; output: string }
   /** What the pull dialog shows, once the upstream is fetched. */
@@ -169,11 +185,11 @@ export function sanitizeLook(v: unknown): LookState {
 export const TO_HOST_TYPES = Object.keys({
   ready: 0, selectRepo: 0, refresh: 0, loadMore: 0, saveLook: 0, action: 0, fetch: 0, pullPrepare: 0, pull: 0, push: 0, openUrl: 0, details: 0, fileDiff: 0, openDiff: 0, checkout: 0, createBranchAt: 0, deleteBranch: 0, deleteRemoteBranch: 0, renameBranch: 0, setTracking: 0, createTagAt: 0, deleteTag: 0, pushTag: 0, fastForward: 0, pullInto: 0,
   copy: 0, stashAction: 0, stashFiles: 0, stage: 0, unstage: 0, discard: 0, openChange: 0, openFile: 0, loadDiff: 0, hunk: 0, lines: 0,
-  resolveUsing: 0, mergeEditor: 0, mergeInputs: 0, mergeResolve: 0, mergeAbort: 0, merge: 0, cherryPick: 0, revert: 0, reset: 0, rebase: 0, interactiveRebase: 0, interactiveRebaseOnto: 0, compareLocal: 0, copyCommitInfo: 0, savePatch: 0, rebaseContinue: 0, rebaseSkip: 0, commit: 0, lastMessage: 0, recentMessages: 0, activity: 0,
+  resolveUsing: 0, mergeEditor: 0, mergeInputs: 0, mergeResolve: 0, mergeAbort: 0, merge: 0, cherryPick: 0, revert: 0, reset: 0, rebase: 0, interactiveRebase: 0, interactiveRebaseOnto: 0, compareLocal: 0, copyCommitInfo: 0, savePatch: 0, rebaseContinue: 0, rebaseSkip: 0, commit: 0, lastMessage: 0, recentMessages: 0, activity: 0, answer: 0,
 } satisfies Record<ToHost['type'], 0>);
 
 export const TO_WEBVIEW_TYPES = Object.keys({
-  data: 0, repos: 0, pushResult: 0, pullInfo: 0, conflicts: 0, branchCreated: 0, details: 0, fileDiff: 0, diff: 0, mergeInputs: 0, lastMessage: 0, recentMessages: 0, committed: 0, activity: 0, look: 0, recheck: 0, error: 0,
+  data: 0, repos: 0, pushResult: 0, pullInfo: 0, conflicts: 0, branchCreated: 0, details: 0, fileDiff: 0, diff: 0, mergeInputs: 0, lastMessage: 0, recentMessages: 0, committed: 0, activity: 0, look: 0, recheck: 0, ask: 0, error: 0,
 } satisfies Record<ToWebview['type'], 0>);
 
 /** Cheap shape check for messages arriving from the webview: an object with a known `type`. Fields are not validated. */
