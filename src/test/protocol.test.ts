@@ -66,6 +66,10 @@ describe('contract with the scripts of the main view', () => {
     assert.match(mainJs, /case 'recheck': local\.load\(selection\.target\(\)\); break;/);
   });
 
+  test('the panel builds its own packet: it tells the view about the remotes the same way as readSnapshot', () => {
+    assert.match(read('../../src/panel.ts'), /buildSnapshot\(\{[^}]*\.\.\.remoteFields\(s\.remotes\)/);
+  });
+
   test('the refresh button asks Git for the status first: repo.state only follows it with a delay', () => {
     assert.match(read('../../src/panel.ts'), /case 'refresh': this\.logCache = undefined; this\.lastSig = undefined; await this\.repo\?\.status\(\); this\.refresh\(\); return;/);
   });

@@ -6,7 +6,7 @@ import { GitService, type CommitInfo, type MergeState, type RefInfo } from './gi
 import { parseDiff } from './diff';
 import { preferredRepo, repoRelative, sameRepo } from './paths';
 import { isConflict, type ChangeItem } from './changes';
-import { changeItems, readLocalDiff } from './readSnapshot';
+import { changeItems, readLocalDiff, remoteFields } from './readSnapshot';
 import { avatarHashes } from './avatars';
 import { buildSnapshot, mergeInfo, snapshotSignature, type MergeInfo } from './snapshot';
 import { coalesced } from './coalesced';
@@ -229,7 +229,7 @@ export class BonsaiPanel implements vscode.Disposable {
     const s = repo.state;
     const snapshot = buildSnapshot({
       commits: log.commits, more: log.commits.length >= this.logLimit,
-      refs: log.refs, head: log.head, currentBranch: s.HEAD?.name, staged, unstaged, merge, remotes: s.remotes.map(r => r.name),
+      refs: log.refs, head: log.head, currentBranch: s.HEAD?.name, staged, unstaged, merge, ...remoteFields(s.remotes),
       worktreeSubject: n => t('worktreeRow', n), now: Date.now() / 1000,
     });
     this.post(this.gravatar ? { ...snapshot, avatars: avatarHashes(snapshot.commits) } : snapshot);

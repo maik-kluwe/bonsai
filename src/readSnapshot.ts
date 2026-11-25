@@ -20,6 +20,9 @@ export function changeItems(root: string, changes: readonly Change[]): ChangeIte
   })).sort((a, b) => a.path.localeCompare(b.path));
 }
 
+/** What the view gets to know about the remotes; for the panel and for {@link readSnapshot} alike. */
+export const remoteFields = (remotes: Repository['state']['remotes']) => ({ remotes: remotes.map(r => r.name), providers: providersOf(remotes) });
+
 /**
  * Everything the view shows, read from the repository now and without caches. The panel keeps its own caches around the
  * same steps; the scenario tests (src/test/scenario.ts) use this to answer the view as the panel would.
@@ -33,7 +36,7 @@ export async function readSnapshot(svc: GitService, repo: Repository, limit: num
   const unstaged = changeItems(root, [...s.mergeChanges, ...s.workingTreeChanges, ...s.untrackedChanges]);
   return buildSnapshot({
     commits, more: commits.length >= limit, refs, head, currentBranch: s.HEAD?.name, staged, unstaged,
-    merge: mergeInfo(merge, s.mergeChanges.length, t('incomingSide')), remotes: s.remotes.map(r => r.name), providers: providersOf(s.remotes),
+    merge: mergeInfo(merge, s.mergeChanges.length, t('incomingSide')), ...remoteFields(s.remotes),
     worktreeSubject: n => t('worktreeRow', n), now: Date.now() / 1000,
   });
 }
