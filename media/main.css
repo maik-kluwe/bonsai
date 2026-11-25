@@ -470,6 +470,8 @@ svg .dot.clamped { fill: var(--vscode-editor-background); stroke: currentColor; 
   background: var(--vscode-input-background); color: var(--vscode-input-foreground); font: inherit; padding: 4px 8px;
 }
 .mfoot { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--border); }
+/* Same size for all of them: without this, button.primary further down makes the main one taller */
+.mdlg .mfoot button, .sdlg .mfoot button { padding: 4px 16px; font-size: var(--fs-sm); border-width: 1px; border-style: solid; }
 .mhint { color: var(--muted); }
 
 /* Merge banner and conflict view */
