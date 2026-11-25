@@ -18,6 +18,7 @@
   // The window for an operation that stopped on conflicts, shared with the tests (media/conflictdialog.js)
   const { createConflictDialog } = /** @type {any} */ (window).BonsaiConflictDialog;
   const { createAskDialog } = /** @type {any} */ (window).BonsaiAskDialog;
+  const { createCheckoutDialog } = /** @type {any} */ (window).BonsaiCheckoutDialog;
   // The commit list's and sidebar's state: data packet, selection, filters, groups, loading more, shared with the tests (media/nav.js)
   const { createNav, WORKTREE } = /** @type {any} */ (window).BonsaiNav;
   // Icons as inline SVG, shared with the tests (media/icons.js)
@@ -132,6 +133,7 @@
       case 'pullInfo': openPullDlg(m.info); break;
       case 'conflicts': openConflictDlg(m); break;
       case 'ask': openAskDlg(m.id, m.question); break;
+      case 'checkoutInfo': openCoDlg(m.info); break;
       case 'branchCreated': newBranch = m.name; showNewBranch(); break;
       case 'fileDiff': onFileDiff(m); break;
       case 'mergeInputs': onMergeInputs(m); break;
@@ -1295,6 +1297,41 @@
     else if (act === 'close') closeConflictDlg();
   });
 
+  // ---------- Checkout with local changes ----------
+
+  const coDlg = $('#codlg');
+  const coDialog = createCheckoutDialog({ t, esc, post: /** @type {(m: any) => void} */ (m => vscode.postMessage(m)) });
+
+  function showCoDlg() {
+    coDlg.innerHTML = coDialog.html();
+    coDlg.hidden = false;
+  }
+  function openCoDlg(/** @type {any} */ info) {
+    coDialog.open(info);
+    showCoDlg();
+    /** @type {HTMLElement} */ (coDlg.querySelector('[data-coact="checkout"]')).focus();
+  }
+  function closeCoDlg() {
+    coDialog.close();
+    coDlg.hidden = true;
+    coDlg.innerHTML = '';
+  }
+  coDlg.addEventListener('change', e => {
+    const mode = /** @type {HTMLElement} */ (e.target).dataset.comode;
+    if (!mode) return;
+    coDialog.setMode(mode);
+    showCoDlg(); // the hint changes with the choice
+    /** @type {HTMLElement} */ (coDlg.querySelector(`[data-comode="${mode}"]`)).focus();
+  });
+  coDlg.addEventListener('click', e => {
+    const act = closest(/** @type {HTMLElement} */ (e.target), '[data-coact]')?.dataset.coact;
+    if (act === 'close') closeCoDlg();
+    else if (act === 'checkout' && coDialog.checkout()) closeCoDlg();
+  });
+  coDlg.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && /** @type {HTMLElement} */ (e.target).tagName === 'INPUT') { e.preventDefault(); if (coDialog.checkout()) closeCoDlg(); }
+  });
+
   // ---------- Questions of the host ----------
 
   const askDlg = $('#askdlg');
@@ -1386,6 +1423,7 @@
     if (e.key !== 'Escape') return;
     if (!menu.hidden) menu.hidden = true;
     else if (askDialog.isOpen) cancelAskDlg();
+    else if (coDialog.isOpen) closeCoDlg();
     else if (stashDialog.isOpen) closeStashDlg();
     else if (!pushDlg.hidden) closePushDlg();
     else if (pullDialog.isOpen) closePullDlg();

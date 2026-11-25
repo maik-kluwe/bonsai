@@ -364,8 +364,8 @@ svg .dot.clamped { fill: var(--vscode-editor-background); stroke: currentColor; 
 .dhead .tag { font-size: var(--fs-xs); text-transform: uppercase; padding: 0 5px; border-radius: 3px; border: 1px solid var(--border); color: var(--muted); }
 .dhead .grow, .hhead .grow { flex: 1; }
 /* Merge dialog */
-#mergedlg, #stashdlg, #pushdlg, #pulldlg, #fetchdlg, #conflictdlg, #askdlg { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
-#mergedlg[hidden], #stashdlg[hidden], #pushdlg[hidden], #pulldlg[hidden], #fetchdlg[hidden], #conflictdlg[hidden], #askdlg[hidden] { display: none; }
+#mergedlg, #stashdlg, #pushdlg, #pulldlg, #fetchdlg, #conflictdlg, #codlg, #askdlg { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
+#mergedlg[hidden], #stashdlg[hidden], #pushdlg[hidden], #pulldlg[hidden], #fetchdlg[hidden], #conflictdlg[hidden], #codlg[hidden], #askdlg[hidden] { display: none; }
 /* A question can come up while another window is open: it lies on top */
 #askdlg { z-index: 60; }
 .adlg .mhead b { min-width: 0; overflow-wrap: anywhere; }

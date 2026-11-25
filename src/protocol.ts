@@ -1,6 +1,6 @@
 import type { ActivityEntry } from './activityLog';
 import type { ParsedDiff } from './diff';
-import type { CommitDetails, ConflictSide, GitService, PullPreview } from './gitService';
+import type { CheckoutPreview, CommitDetails, ConflictSide, GitService, PullPreview } from './gitService';
 import type { ImagePair } from './images';
 import type { Snapshot } from './snapshot';
 
@@ -30,7 +30,10 @@ export type ToHost =
   | { type: 'details'; hash: string; stash?: boolean }
   | { type: 'fileDiff'; hash: string; parent?: string; path: string; oldPath?: string; base?: string; target?: string; /** Lines of context around a change (git's -U); the default of 3 when absent */ context?: number; /** git's -w: whitespace differences do not count (read-only views only) */ ignoreSpace?: boolean }
   | { type: 'openDiff'; hash: string; parent?: string; path: string; oldPath?: string; status: string; base?: string; target?: string }
+  /** A branch or commit. With local changes the host answers with `checkoutInfo` and waits for `checkoutWith`. */
   | { type: 'checkout'; ref: string }
+  /** The dialog's answer: leave the local changes as they are, stash and reapply them, or discard them. */
+  | { type: 'checkoutWith'; ref: string; mode: CheckoutMode }
   | { type: 'createBranchAt'; hash: string }
   /** A local branch; the host asks, and offers to delete its remote branch along with it. */
   | { type: 'deleteBranch'; name: string }
@@ -138,6 +141,8 @@ export type ToWebview =
   | { type: 'look'; look: LookState | undefined }
   /** The repository changed, the lists did not: a file on them may have, so the diff on screen is read again. */
   | { type: 'recheck' }
+  /** What the checkout dialog shows. */
+  | { type: 'checkoutInfo'; info: CheckoutInfo }
   /** Shows a window with a question; answered with `answer`. */
   | { type: 'ask'; id: number; question: Question }
   /** What the server said to a push (GitLab's link for a merge request). */
@@ -149,6 +154,16 @@ export type ToWebview =
   /** The sidebar marks the new branch once it is in the data. */
   | { type: 'branchCreated'; name: string }
   | { type: 'error'; message: string };
+
+export type CheckoutMode = 'keep' | 'stash' | 'discard';
+
+/** What the checkout dialog needs. */
+export interface CheckoutInfo extends CheckoutPreview {
+  /** The branch or commit to switch to. */
+  ref: string;
+  /** "Stash and reapply" was chosen the last time. */
+  stash: boolean;
+}
 
 /** What the pull dialog needs: the branches, what the local changes would meet, and whether the user's Git setting is to rebase. */
 export interface PullInfo extends PullPreview {
@@ -183,13 +198,13 @@ export function sanitizeLook(v: unknown): LookState {
 
 /** Runtime lists of the message types; `satisfies` makes the compiler fail when a union member is missing here. */
 export const TO_HOST_TYPES = Object.keys({
-  ready: 0, selectRepo: 0, refresh: 0, loadMore: 0, saveLook: 0, action: 0, fetch: 0, pullPrepare: 0, pull: 0, push: 0, openUrl: 0, details: 0, fileDiff: 0, openDiff: 0, checkout: 0, createBranchAt: 0, deleteBranch: 0, deleteRemoteBranch: 0, renameBranch: 0, setTracking: 0, createTagAt: 0, deleteTag: 0, pushTag: 0, fastForward: 0, pullInto: 0,
+  ready: 0, selectRepo: 0, refresh: 0, loadMore: 0, saveLook: 0, action: 0, fetch: 0, pullPrepare: 0, pull: 0, push: 0, openUrl: 0, details: 0, fileDiff: 0, openDiff: 0, checkout: 0, checkoutWith: 0, createBranchAt: 0, deleteBranch: 0, deleteRemoteBranch: 0, renameBranch: 0, setTracking: 0, createTagAt: 0, deleteTag: 0, pushTag: 0, fastForward: 0, pullInto: 0,
   copy: 0, stashAction: 0, stashFiles: 0, stage: 0, unstage: 0, discard: 0, openChange: 0, openFile: 0, loadDiff: 0, hunk: 0, lines: 0,
   resolveUsing: 0, mergeEditor: 0, mergeInputs: 0, mergeResolve: 0, mergeAbort: 0, merge: 0, cherryPick: 0, revert: 0, reset: 0, rebase: 0, interactiveRebase: 0, interactiveRebaseOnto: 0, compareLocal: 0, copyCommitInfo: 0, savePatch: 0, rebaseContinue: 0, rebaseSkip: 0, commit: 0, lastMessage: 0, recentMessages: 0, activity: 0, answer: 0,
 } satisfies Record<ToHost['type'], 0>);
 
 export const TO_WEBVIEW_TYPES = Object.keys({
-  data: 0, repos: 0, pushResult: 0, pullInfo: 0, conflicts: 0, branchCreated: 0, details: 0, fileDiff: 0, diff: 0, mergeInputs: 0, lastMessage: 0, recentMessages: 0, committed: 0, activity: 0, look: 0, recheck: 0, ask: 0, error: 0,
+  data: 0, repos: 0, pushResult: 0, pullInfo: 0, conflicts: 0, branchCreated: 0, details: 0, fileDiff: 0, diff: 0, mergeInputs: 0, lastMessage: 0, recentMessages: 0, committed: 0, activity: 0, look: 0, recheck: 0, ask: 0, checkoutInfo: 0, error: 0,
 } satisfies Record<ToWebview['type'], 0>);
 
 /** Cheap shape check for messages arriving from the webview: an object with a known `type`. Fields are not validated. */

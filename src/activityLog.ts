@@ -89,7 +89,8 @@ export function describeAction(m: ToHost): { title: string; subtitle?: string } 
     case 'rebaseSkip': return { title: 'Skip commit' };
     case 'mergeAbort': return { title: 'Abort' };
     case 'commit': return { title: m.amend ? 'Amend' : 'Commit', subtitle: firstLine(m.message) || undefined };
-    case 'checkout': return { title: 'Checkout', subtitle: m.ref };
+    // Without local changes `checkout` switches at once; with them it only asks, and `checkoutWith` does the work
+    case 'checkout': case 'checkoutWith': return { title: 'Checkout', subtitle: m.ref };
     case 'createBranchAt': return { title: 'Create branch', subtitle: short(m.hash) };
     case 'deleteBranch': case 'deleteRemoteBranch': return { title: 'Delete branch', subtitle: m.name };
     case 'renameBranch': return { title: 'Rename branch', subtitle: m.name };

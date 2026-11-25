@@ -101,6 +101,7 @@ export function pageHtml(o: PageOptions): string {
   <div id="pulldlg" hidden></div>
   <div id="fetchdlg" hidden></div>
   <div id="conflictdlg" hidden></div>
+  <div id="codlg" hidden></div>
   <div id="askdlg" hidden></div>
   <div id="menu" hidden></div>
   <div id="error" hidden></div>

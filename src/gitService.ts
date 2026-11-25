@@ -68,6 +68,16 @@ const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 /** Result of an operation that may stop on conflicts; `output` is what Git printed (stdout, then stderr). */
 export type Outcome = { conflicted: false } | { conflicted: true; output: string };
 
+/** What a checkout would meet; see `checkoutPreview`. */
+export interface CheckoutPreview {
+  /** Files with tracked local changes. */
+  changes: number;
+  /** Those the other side has differently: Git refuses the checkout because of them. */
+  overwritten: string[];
+  /** Where the changes would conflict once stashed and reapplied; absent when not known. */
+  reapplyConflicts?: string[];
+}
+
 /** What a pull would meet, read after fetching; see GitService.pullPreview. */
 export interface PullPreview {
   /** Commits of the upstream branch that HEAD lacks. */
@@ -338,6 +348,84 @@ export class GitService {
         : [];
     } catch { /* unmerged files, or a Git without merge-tree --write-tree: no prediction */ }
     return { behind, changes: local.length, overwritten: local.filter(f => incoming.has(f)), reapplyConflicts };
+  }
+
+  /**
+   * What switching to `ref` would meet in the working tree. Git refuses it for files that have local changes and that
+   * the other side has differently. Where the changes would conflict once stashed and reapplied is worked out as in
+   * `pullPreview`, without touching anything.
+   */
+  async checkoutPreview(ref: string): Promise<CheckoutPreview> {
+    const names = async (args: string[]) => (await this.run(args)).split('\0').filter(Boolean);
+    const local = await names(['diff', '--name-only', '--no-renames', '-z', 'HEAD', '--']);
+    const target = await this.checkoutTarget(ref);
+    if (!target || !local.length) return { changes: local.length, overwritten: [] };
+    const differs = new Set(await names(['diff', '--name-only', '--no-renames', '-z', 'HEAD', target, '--']));
+    let reapplyConflicts: string[] | undefined;
+    try {
+      const stash = (await this.run(['stash', 'create'])).trim();
+      reapplyConflicts = stash
+        ? parsePreview(await this.run(['merge-tree', '--write-tree', '--name-only', '--no-messages', '--merge-base=HEAD', target, stash], undefined, [1]))
+        : [];
+    } catch { /* a Git without merge-tree --write-tree: no prediction */ }
+    return { changes: local.length, overwritten: local.filter(f => differs.has(f)), reapplyConflicts };
+  }
+
+  /** The commit `git checkout ref` would go to: a name that only a remote has yet gets a local branch from there. */
+  private async checkoutTarget(ref: string): Promise<string | undefined> {
+    const commit = async (name: string) => (await this.run(['rev-parse', '-q', '--verify', `${name}^{commit}`], undefined, [1])).trim();
+    const own = await commit(ref);
+    if (own) return own;
+    for (const remote of (await this.run(['remote'])).split('\n').map(r => r.trim()).filter(Boolean)) {
+      const there = await commit(`refs/remotes/${remote}/${ref}`);
+      if (there) return there;
+    }
+    return undefined;
+  }
+
+  /**
+   * Throws away all tracked local changes and checks `ref` out. A forced checkout would silently overwrite an
+   * untracked file that the other side tracks, so those are looked for first: then nothing at all happens, and the
+   * files are returned.
+   */
+  async checkoutDiscarding(ref: string): Promise<string[]> {
+    const names = async (args: string[]) => (await this.run(args)).split('\0').filter(Boolean);
+    const target = await this.checkoutTarget(ref);
+    if (target) {
+      const untracked = await names(['ls-files', '--others', '--exclude-standard', '-z']);
+      if (untracked.length) {
+        const there = new Set(await names(['ls-tree', '-r', '--name-only', '--full-tree', '-z', target]));
+        const inTheWay = untracked.filter(f => there.has(f));
+        if (inTheWay.length) return inTheWay;
+      }
+    }
+    await this.run(['checkout', '-q', '-f', ref, '--']);
+    return [];
+  }
+
+  /** Puts the tracked local changes away; false when Git found nothing to save. */
+  async stashForSwitch(message: string): Promise<boolean> {
+    const top = async () => (await this.run(['rev-parse', '-q', '--verify', 'refs/stash'], undefined, [1])).trim();
+    const before = await top();
+    await this.run(['stash', 'push', '-q', '-m', message]);
+    return (await top()) !== before;
+  }
+
+  /**
+   * Brings the newest stash back and drops it: staged files are staged again where Git can, otherwise everything comes
+   * back unstaged. After conflicts the stash is kept, as the way back.
+   */
+  async reapplyStash(): Promise<Outcome> {
+    let outcome: Outcome;
+    try {
+      outcome = await this.attempt(['stash', 'apply', '--index', 'stash@{0}']);
+    } catch {
+      // The staged part does not apply there, and Git then does nothing at all (its message depends on the language, so
+      // it is not read): without it, the changes are merged
+      outcome = await this.attempt(['stash', 'apply', 'stash@{0}']);
+    }
+    if (!outcome.conflicted) await this.run(['stash', 'drop', '-q', 'stash@{0}']);
+    return outcome;
   }
 
   private async behind(upstream: string): Promise<number> {

@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { ForcePushMode, Status, type Change, type Repository } from './git';
 import type { GitService, Outcome } from './gitService';
-import { sanitizePullChoice, type PullInfo } from './protocol';
+import { sanitizePullChoice, type CheckoutInfo, type CheckoutMode, type PullInfo } from './protocol';
 import { MERGE_OPTIONS, RESET_MODES, createdRemoteBranch, isAuthFailure, remoteMessages, unsupportedWithConflicts, type MergeOption, type PushOptions, type ResetMode } from './operations';
 import { checkHunk, hunkPatch, linesPatch, parseDiff } from './diff';
 import { mergeInfo } from './snapshot';
@@ -32,6 +32,9 @@ export interface Memory {
   get(key: string): unknown;
   set(key: string, value: unknown): Promise<void>;
 }
+
+/** Where it is kept that "Stash and reapply" was chosen for the last checkout. */
+export const CHECKOUT_STASH_KEY = 'bonsai.checkoutStash';
 
 /** Where the last choice in the pull dialog is kept. */
 export const PULL_CHOICE_KEY = 'bonsai.pullChoice';
@@ -538,6 +541,48 @@ export async function runPush(c: FlowCtx, o: PushOptions): Promise<string> {
 
 export async function runCheckout(c: FlowCtx, ref: string): Promise<void> {
   await c.progress(`Checkout ${ref}`, () => c.api(c.repo.checkout(ref)));
+}
+
+/**
+ * The first half of a checkout. Without local changes it switches at once; with them it returns what the dialog needs,
+ * as Fork asks what is to become of them. With unmerged files there is nothing to choose: Git says why it refuses.
+ */
+export async function runCheckoutPrepare(c: FlowCtx, ref: string): Promise<CheckoutInfo | undefined> {
+  await c.repo.status();
+  if (ref === c.repo.state.HEAD?.name || !trackedChanges(c.repo).length || c.repo.state.mergeChanges.length) {
+    await runCheckout(c, ref);
+    return undefined;
+  }
+  return { ref, stash: c.memory.get(CHECKOUT_STASH_KEY) === true, ...(await c.svc.checkoutPreview(ref)) };
+}
+
+/** The second half: switches, and does with the local changes what the dialog said. */
+export async function runCheckoutWith(c: FlowCtx, ref: string, mode: CheckoutMode): Promise<void> {
+  // Discarding is never remembered: it is chosen anew every time
+  if (mode !== 'discard') await c.memory.set(CHECKOUT_STASH_KEY, mode === 'stash');
+  if (mode === 'keep') return runCheckout(c, ref);
+  if (mode === 'discard') {
+    const inTheWay = await c.progress(`Checkout ${ref}`, () => c.svc.checkoutDiscarding(ref));
+    if (inTheWay.length) throw new Error(t('errUntrackedInWay', inTheWay.join(', ')));
+    return c.repo.status();
+  }
+  const stashed = await c.svc.stashForSwitch(`Autostash before checkout of ${shown(ref)}`);
+  try {
+    await runCheckout(c, ref);
+  } catch (e) {
+    // Not switched: the changes go straight back to where they were
+    if (stashed) await c.svc.reapplyStash();
+    await c.repo.status();
+    throw e;
+  }
+  let outcome: Outcome | undefined;
+  try {
+    outcome = stashed ? await c.svc.reapplyStash() : undefined;
+  } catch (e) {
+    await c.repo.status();
+    throw new Error(`${t('errStashKept')}\n${(e as Error).message}`);
+  }
+  await finish(c.ui, c.repo, outcome);
 }
 
 export async function runBranchAt(c: FlowCtx, hash: string): Promise<string | undefined> {

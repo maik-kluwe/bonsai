@@ -3,7 +3,7 @@ import { parseDiff } from './diff';
 import { commitDiffRefs } from './diffTargets';
 import { readImages, refSource } from './images';
 import {
-  applyHunk, applyLines, discardFiles, runAbort, runAction, runBranchAt, runCheckout, runCherryPick, runCommit, runMerge, runNewBranch, runPush,
+  applyHunk, applyLines, discardFiles, runAbort, runAction, runBranchAt, runCheckoutPrepare, runCheckoutWith, runCherryPick, runCommit, runMerge, runNewBranch, runPush,
   runDeleteBranch, runDeleteRemoteBranch, runDeleteTag, runFastForward, runFetch, runPull, runPullInto, runPullPrepare, runPushTag, runRenameBranch, runSavePatch, runTagAt, runTracking, runRebase, runRebaseContinue, runRebaseSkip, runReset, runRevert, runStashAction, runStashFiles, stageFiles, unstageFiles, type FlowCtx,
 } from './flows';
 
@@ -58,7 +58,13 @@ export const repoHandlers: { [K in RepoType]: Handler<K> } = {
       if (output) c.post({ type: 'pushResult', output });
     },
   },
-  checkout: { run: (m, c) => runCheckout(c, m.ref) },
+  checkout: {
+    run: async (m, c) => {
+      const info = await runCheckoutPrepare(c, m.ref);
+      if (info) c.post({ type: 'checkoutInfo', info });
+    },
+  },
+  checkoutWith: { run: (m, c) => runCheckoutWith(c, m.ref, m.mode) },
   createBranchAt: { run: (m, c) => announceBranch(c, runBranchAt(c, m.hash)) },
   deleteBranch: { run: (m, c) => runDeleteBranch(c, m.name) },
   deleteRemoteBranch: { run: (m, c) => runDeleteRemoteBranch(c, m.name) },
