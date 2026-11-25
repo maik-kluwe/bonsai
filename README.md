@@ -9,7 +9,7 @@ A full Git client in a VS Code tab. See your whole history as a graph, stage sin
 1. Open a folder that contains a Git repository.
 2. Click **Bonsai** in the status bar at the bottom left. The button at the top of the Source Control view and the command **Bonsai: Open Bonsai** do the same.
 
-With several repositories in the workspace, the dropdown at the top left switches between them.
+With several repositories in the workspace, Bonsai starts with the one of the file you have open, else the one of the first folder. The dropdown at the top left switches between them.
 
 ## What you can do
 
@@ -23,7 +23,7 @@ The sidebar lists branches, remotes, tags and stashes as folders, so `feature/lo
 
 ![The Local Changes view with unstaged and staged files, a diff with hunk buttons and the commit box](images/changes.png)
 
-Open **Local Changes** to see unstaged and staged files next to the diff. Stage or discard a whole file, one hunk, or only the lines you selected. Then write your message below and commit, or tick **Amend** to change the last commit.
+Open **Local Changes** to see unstaged and staged files next to the diff. Stage or discard a whole file, one hunk, or only the lines you selected: click a line, or drag over several. Then write your message below and commit, or tick **Amend** to change the last commit.
 
 ### Resolve conflicts
 

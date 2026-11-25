@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Dragging over lines of a diff marks them for "Stage lines", "Discard lines" and "Unstage lines".
+
+### Changed
+- With several repositories, Bonsai starts with the one of the open file, else the one of the first workspace folder.
+
+### Fixed
+- Long file names no longer stick out of the hint in the pull window.
+- Two initials fit into the avatar circle.
+- The counters at Local Changes, Pull and Push are readable in every theme.
+- All buttons at the bottom of a window are the same size.
+
 ## 0.5.0 - 2026-11-21
 
 ### Added
