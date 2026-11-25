@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 - 2026-11-25
 
 ### Added
 - Checking out with local changes asks what to do with them: leave them, stash and reapply, or discard. It says beforehand whether Git would refuse or conflict.
