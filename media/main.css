@@ -16,6 +16,8 @@
   --lane-7: #f78fb3;
   --border: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
   --muted: color-mix(in srgb, var(--vscode-foreground) 72%, var(--vscode-editor-background));
+  /* Behind counters, under the normal text colour: readable in every theme, unlike some badge colours */
+  --count-bg: color-mix(in srgb, var(--vscode-foreground) 18%, var(--vscode-editor-background));
 }
 
 * { box-sizing: border-box; }
@@ -69,8 +71,8 @@ body.dragging { cursor: col-resize; user-select: none; }
   border-radius: 7px;
   font-size: var(--fs-xs);
   line-height: 14px;
-  background: var(--vscode-badge-background);
-  color: var(--vscode-badge-foreground);
+  background: var(--count-bg);
+  font-weight: 600;
 }
 .toolbar .badge:empty { display: none; }
 .toolbar .sep { width: 1px; height: 28px; margin: 0 6px; background: var(--border); }
@@ -123,7 +125,7 @@ main { flex: 1; display: flex; min-height: 0; }
 .nav-item.active { background: var(--vscode-list-inactiveSelectionBackground); }
 .nav-item .ico { width: 20px; font-size: var(--icon); text-align: center; color: var(--muted); }
 .nav-item[data-view="changes"] .ico { color: var(--vscode-gitDecoration-modifiedResourceForeground); }
-.nav-item .count { margin-left: auto; padding: 0 6px; border-radius: 8px; font-size: var(--fs-xs); background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
+.nav-item .count { margin-left: auto; padding: 0 6px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 600; background: var(--count-bg); }
 .nav-item .count:empty { display: none; }
 #ref-filter {
   flex: none;
